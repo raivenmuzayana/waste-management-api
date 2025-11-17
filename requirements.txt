@@ -7,4 +7,5 @@ passlib[bcrypt]
 python-jose[cryptography] 
 pandas                  
 pytest
-httpx                   
+httpx
+python-multipart             
