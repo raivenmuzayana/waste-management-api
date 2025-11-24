@@ -3,7 +3,8 @@ uvicorn[standard]
 sqlalchemy
 mysql-connector-python  
 pydantic-settings      
-passlib[bcrypt]        
+passlib[bcrypt]
+bcrypt==3.2.2
 python-jose[cryptography] 
 pandas                  
 pytest
