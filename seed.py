@@ -1,74 +1,93 @@
-# file: seed.py
-import pandas as pd
+#seed.py random generator
+
+import random
+from datetime import datetime, timedelta
 from sqlalchemy.orm import Session
 from database import SessionLocal, engine, Base
 from models import location_model, category_model, collection_model
-from datetime import datetime
 
-# Buat tabel jika belum ada
+# Buat tabel jika belum ada (Safe check)
 Base.metadata.create_all(bind=engine)
 
 def seed_data():
     db = SessionLocal()
     try:
-        # 1. BACA CSV
-        # Pastikan nama file CSV sesuai dengan yang ada di folder Anda
-        csv_file = "dataset_sampah_dummy (2).csv" 
-        print(f"Membaca file {csv_file}...")
-        df = pd.read_csv(csv_file)
+        print("Mulai generate data dummy...")
 
-        # Hapus spasi di nama kolom jika ada
-        df.columns = df.columns.str.strip()
-
-        # 2. ITERASI SETIAP BARIS
-        count = 0
-        for index, row in df.iterrows():
-            # --- Handle Lokasi ---
-            loc_name = row['Lokasi']
-            # Cek apakah lokasi sudah ada di DB?
-            location = db.query(location_model.Location).filter_by(name=loc_name).first()
-            if not location:
-                # Buat baru jika belum ada
-                location = location_model.Location(name=loc_name, latitude=0.0, longitude=0.0)
-                db.add(location)
-                db.commit()
-                db.refresh(location)
-            
-            # --- Handle Kategori ---
-            cat_name = row['Jenis_Sampah']
-            category = db.query(category_model.WasteCategory).filter_by(name=cat_name).first()
-            if not category:
-                category = category_model.WasteCategory(name=cat_name, description="Impor dari CSV")
-                db.add(category)
-                db.commit()
-                db.refresh(category)
-
-            # --- Handle Format Tanggal ---
-            # CSV format: DD/MM/YYYY, Database butuh: YYYY-MM-DD
-            date_str = row['Tanggal']
-            try:
-                date_obj = datetime.strptime(date_str, "%d/%m/%Y")
-            except ValueError:
-                # Fallback jika format salah
-                date_obj = datetime.now()
-
-            # --- Masukkan Data Sampah ---
-            vol = float(row['Volume_Sampah_kg'])
-            
-            record = collection_model.CollectionRecord(
-                volume_kg=vol,
-                collection_date=date_obj,
-                location_id=location.id,
-                category_id=category.id
-            )
-            db.add(record)
-            count += 1
+        # --- 1. MEMBUAT DATA MASTER (Lokasi & Kategori) ---
         
+        # Daftar Nama Lokasi Palsu
+        location_names = [
+            "Pasar Induk Gedebage", "TPS 3R Sukaluyu", "Terminal Cicaheum", 
+            "Alun-alun Bandung", "Pasar Kosambi", "Kawasan Dago", 
+            "Komplek Setiabudi", "Mall PVJ Area"
+        ]
+        
+        # Daftar Kategori Sampah
+        category_names = [
+            "Organik", "Plastik", "Kertas/Karton", 
+            "Logam/Kaleng", "Kaca", "Residu"
+        ]
+
+        # Masukkan Lokasi ke DB (Cek dulu biar gak dobel)
+        db_locations = []
+        for name in location_names:
+            loc = db.query(location_model.Location).filter_by(name=name).first()
+            if not loc:
+                # Generate koordinat acak sekitar Bandung (Latitude -6.9, Longitude 107.6)
+                lat = -6.9 + random.uniform(-0.05, 0.05)
+                lon = 107.6 + random.uniform(-0.05, 0.05)
+                loc = location_model.Location(name=name, latitude=lat, longitude=lon)
+                db.add(loc)
+                db.commit()
+                db.refresh(loc)
+            db_locations.append(loc) # Simpan objek lokasi untuk dipakai nanti
+
+        # Masukkan Kategori ke DB
+        db_categories = []
+        for name in category_names:
+            cat = db.query(category_model.WasteCategory).filter_by(name=name).first()
+            if not cat:
+                cat = category_model.WasteCategory(name=name, description=f"Sampah jenis {name}")
+                db.add(cat)
+                db.commit()
+                db.refresh(cat)
+            db_categories.append(cat)
+
+        print(f"✅ Berhasil membuat {len(db_locations)} lokasi dan {len(db_categories)} kategori.")
+
+        # --- 2. GENERATE DATA TRANSAKSI (Collection Records) ---
+        
+        JUMLAH_DATA = 500  # Mau bikin berapa data? Ganti angka ini sesuka hati
+        
+        records_buffer = []
+        for i in range(JUMLAH_DATA):
+            # A. Pilih Random Lokasi & Kategori dari yang sudah dibuat di atas
+            random_loc = random.choice(db_locations)
+            random_cat = random.choice(db_categories)
+            
+            # B. Random Volume (Misal antara 5.0 kg sampai 100.0 kg)
+            random_vol = round(random.uniform(5.0, 100.0), 2)
+            
+            # C. Random Tanggal (Dalam 30 hari terakhir)
+            days_ago = random.randint(0, 30)
+            random_date = datetime.now() - timedelta(days=days_ago)
+            
+            # Buat Objek Record
+            new_record = collection_model.CollectionRecord(
+                volume_kg=random_vol,
+                collection_date=random_date,
+                location_id=random_loc.id,
+                category_id=random_cat.id
+            )
+            db.add(new_record)
+
+        # Commit sekaligus biar cepat
         db.commit()
-        print(f"Berhasil memasukkan {count} data ke database!")
+        print(f"🎉 Selesai! Berhasil meng-generate {JUMLAH_DATA} data sampah secara acak.")
 
     except Exception as e:
-        print(f"Terjadi error: {e}")
+        print(f"❌ Terjadi error: {e}")
         db.rollback()
     finally:
         db.close()
