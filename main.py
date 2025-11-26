@@ -1,7 +1,7 @@
 from fastapi import FastAPI, Depends
 from database import engine, Base, get_db
 from models import user_model, location_model, category_model, collection_model
-from routers import auth_router, location_router, category_router, collection_router, analysis_router, import_router
+from routers import auth_router, location_router, category_router, collection_router, analysis_router, import_router, seed_router
 from sqlalchemy.orm import Session
 from services import auth_service # untuk initial admin
 
@@ -23,6 +23,7 @@ app.include_router(category_router.router)
 app.include_router(collection_router.router)
 app.include_router(analysis_router.router)
 app.include_router(import_router.router)
+app.include_router(seed_router.router)
 
 # Endpoint root untuk cek status
 @app.get("/")

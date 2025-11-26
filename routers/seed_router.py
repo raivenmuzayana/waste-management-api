@@ -1,22 +1,25 @@
-#seed.py random generator
-
+from fastapi import APIRouter, Depends, HTTPException
+from sqlalchemy.orm import Session
+from database import get_db
+from models import location_model, category_model, collection_model
 import random
 from datetime import datetime, timedelta
-from sqlalchemy.orm import Session
-from database import SessionLocal, engine, Base
-from models import location_model, category_model, collection_model
 
-# Buat tabel jika belum ada (Safe check)
-Base.metadata.create_all(bind=engine)
+router = APIRouter(
+    prefix="/seed",
+    tags=["Seed Data (Generator)"]
+)
 
-def seed_data():
-    db = SessionLocal()
+@router.post("/generate-dummy-data")
+def generate_data(jumlah_data: int = 100, db: Session = Depends(get_db)):
+    """
+    Endpoint untuk meng-generate data dummy secara otomatis.
+    Parameter 'jumlah_data' menentukan berapa banyak transaksi yang dibuat.
+    """
     try:
-        print("Mulai generate data dummy...")
-
         # --- 1. MEMBUAT DATA MASTER (Lokasi & Kategori) ---
         
-        # Daftar Nama Lokasi Palsu
+        # Daftar Nama Lokasi Palsu (Sama seperti seed.py Anda)
         location_names = [
             "Pasar Induk Gedebage", "TPS 3R Sukaluyu", "Terminal Cicaheum", 
             "Alun-alun Bandung", "Pasar Kosambi", "Kawasan Dago", 
@@ -34,14 +37,14 @@ def seed_data():
         for name in location_names:
             loc = db.query(location_model.Location).filter_by(name=name).first()
             if not loc:
-                # Generate koordinat acak sekitar Bandung (Latitude -6.9, Longitude 107.6)
+                # Generate koordinat acak
                 lat = -6.9 + random.uniform(-0.05, 0.05)
                 lon = 107.6 + random.uniform(-0.05, 0.05)
                 loc = location_model.Location(name=name, latitude=lat, longitude=lon)
                 db.add(loc)
                 db.commit()
                 db.refresh(loc)
-            db_locations.append(loc) # Simpan objek lokasi untuk dipakai nanti
+            db_locations.append(loc)
 
         # Masukkan Kategori ke DB
         db_categories = []
@@ -54,19 +57,14 @@ def seed_data():
                 db.refresh(cat)
             db_categories.append(cat)
 
-        print(f"✅ Berhasil membuat {len(db_locations)} lokasi dan {len(db_categories)} kategori.")
-
-        # --- 2. GENERATE DATA TRANSAKSI (Collection Records) ---
+        # --- 2. GENERATE DATA TRANSAKSI ---
         
-        JUMLAH_DATA = 500  # Mau bikin berapa data? Ganti angka ini sesuka hati
-        
-        records_buffer = []
-        for i in range(JUMLAH_DATA):
-            # A. Pilih Random Lokasi & Kategori dari yang sudah dibuat di atas
+        for i in range(jumlah_data):
+            # A. Pilih Random Lokasi & Kategori
             random_loc = random.choice(db_locations)
             random_cat = random.choice(db_categories)
             
-            # B. Random Volume (Misal antara 5.0 kg sampai 100.0 kg)
+            # B. Random Volume (5.0 kg - 100.0 kg)
             random_vol = round(random.uniform(5.0, 100.0), 2)
             
             # C. Random Tanggal (Dalam 30 hari terakhir)
@@ -82,15 +80,16 @@ def seed_data():
             )
             db.add(new_record)
 
-        # Commit sekaligus biar cepat
+        # Commit sekaligus
         db.commit()
-        print(f"🎉 Selesai! Berhasil meng-generate {JUMLAH_DATA} data sampah secara acak.")
+        
+        return {
+            "message": "Sukses generate data dummy",
+            "jumlah_lokasi": len(db_locations),
+            "jumlah_kategori": len(db_categories),
+            "data_transaksi_dibuat": jumlah_data
+        }
 
     except Exception as e:
-        print(f"❌ Terjadi error: {e}")
         db.rollback()
-    finally:
-        db.close()
-
-if __name__ == "__main__":
-    seed_data()
+        raise HTTPException(status_code=500, detail=f"Gagal generate data: {str(e)}")
