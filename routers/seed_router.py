@@ -87,7 +87,7 @@ def generate_data(jumlah_data: int = 100, db: Session = Depends(get_db)):
             "message": "Sukses generate data dummy",
             "jumlah_lokasi": len(db_locations),
             "jumlah_kategori": len(db_categories),
-            "data_transaksi_dibuat": jumlah_data
+            "jumlah_baris_dibuat": jumlah_data
         }
 
     except Exception as e:
