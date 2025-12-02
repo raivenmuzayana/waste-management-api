@@ -2,7 +2,8 @@ from fastapi import APIRouter, Depends
 from sqlalchemy.orm import Session
 from typing import List
 from database import get_db
-from models import analysis_model, user_model
+# Tambahkan location_model di sini
+from models import analysis_model, user_model, location_model
 from services import analysis_service, auth_service
 
 router = APIRouter(
@@ -35,3 +36,12 @@ def get_daily_collection_trend(db: Session = Depends(get_db)):
 @router.get("/prediction")
 def get_volume_prediction(db: Session = Depends(get_db)):
     return analysis_service.get_prediction(db)
+
+# --- Endpoint Baru: Optimasi Rute ---
+@router.get("/route/optimize", response_model=List[location_model.LocationResponse])
+def get_optimized_waste_collection_route(db: Session = Depends(get_db)):
+    """
+    Mendapatkan urutan lokasi pengambilan sampah yang efisien 
+    berdasarkan jarak terdekat (Traveling Salesperson Problem - Nearest Neighbor).
+    """
+    return analysis_service.get_optimized_route(db)
