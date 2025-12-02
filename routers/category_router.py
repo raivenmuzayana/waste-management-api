@@ -11,7 +11,8 @@ router = APIRouter(
     dependencies=[Depends(auth_service.get_current_user)]
 )
 
-@router.post("/", response_model=category_model.WasteCategory, status_code=status.HTTP_201_CREATED)
+# Perhatikan: response_model sekarang pakai WasteCategoryResponse
+@router.post("/", response_model=category_model.WasteCategoryResponse, status_code=status.HTTP_201_CREATED)
 def create_new_category(
     category: category_model.WasteCategoryCreate, 
     db: Session = Depends(get_db),
@@ -19,12 +20,12 @@ def create_new_category(
 ):
     return category_service.create_category(db=db, category=category)
 
-@router.get("/", response_model=List[category_model.WasteCategory])
+@router.get("/", response_model=List[category_model.WasteCategoryResponse])
 def read_categories(skip: int = 0, limit: int = 100, db: Session = Depends(get_db)):
     categories = category_service.get_categories(db, skip=skip, limit=limit)
     return categories
 
-@router.get("/{category_id}", response_model=category_model.WasteCategory)
+@router.get("/{category_id}", response_model=category_model.WasteCategoryResponse)
 def read_category(category_id: int, db: Session = Depends(get_db)):
     db_category = category_service.get_category(db, category_id=category_id)
     if db_category is None:

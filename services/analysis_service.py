@@ -1,8 +1,8 @@
+# file: services/analysis_service.py
 from sqlalchemy.orm import Session
 from sqlalchemy import func, desc
 from models import collection_model, location_model, category_model
 from typing import List
-from datetime import date
 
 # 1. Rata-rata volume per lokasi
 def get_avg_volume_per_location(db: Session) -> List:
@@ -19,12 +19,12 @@ def get_avg_volume_per_category(db: Session) -> List:
     result = db.query(
         category_model.WasteCategory.name.label("category_name"),
         func.avg(collection_model.CollectionRecord.volume_kg).label("average_volume")
-    ).join(collection_model.CollectionRecord, category_model.WasteCategory.id == collection_model.CollectionRecord.waste_category_id)\
+    ).join(collection_model.CollectionRecord, category_model.WasteCategory.id == collection_model.CollectionRecord.category_id)\
      .group_by(category_model.WasteCategory.name)\
      .all()
     return result
 
-# 3. Lokasi produksi sampah tertinggi (Top 5)
+# 3. Top Locations
 def get_top_locations(db: Session, limit: int = 5) -> List:
     result = db.query(
         location_model.Location.name.label("location_name"),
@@ -36,22 +36,19 @@ def get_top_locations(db: Session, limit: int = 5) -> List:
      .all()
     return result
 
-# 4. Distribusi jenis sampah
+# 4. Distribusi
 def get_category_distribution(db: Session) -> List:
-    # Pertama, hitung total volume keseluruhan
     total_waste = db.query(func.sum(collection_model.CollectionRecord.volume_kg)).scalar()
     if not total_waste or total_waste == 0:
         return []
 
-    # Kedua, hitung total per kategori
     result_raw = db.query(
         category_model.WasteCategory.name.label("category_name"),
         func.sum(collection_model.CollectionRecord.volume_kg).label("total_volume")
-    ).join(collection_model.CollectionRecord, category_model.WasteCategory.id == collection_model.CollectionRecord.waste_category_id)\
+    ).join(collection_model.CollectionRecord, category_model.WasteCategory.id == collection_model.CollectionRecord.category_id)\
      .group_by(category_model.WasteCategory.name)\
      .all()
     
-    # Ketiga, hitung persentase
     distribution = [
         {
             "category_name": r.category_name,
@@ -61,7 +58,7 @@ def get_category_distribution(db: Session) -> List:
     ]
     return distribution
 
-# 5. Tren volume sampah (harian)
+# 5. Tren Harian
 def get_daily_trend(db: Session) -> List:
     result = db.query(
         func.date(collection_model.CollectionRecord.collection_date).label("collection_date"),
@@ -71,10 +68,6 @@ def get_daily_trend(db: Session) -> List:
      .all()
     return result
 
-# 6. Prediksi (Placeholder)
+# 6. Prediksi
 def get_prediction(db: Session):
-    # Ini adalah placeholder.
-    # [cite: 10] Meminta prediksi, yang membutuhkan model ML (seperti ARIMA atau Prophet).
-    # Ini tidak bisa dilakukan dengan SQL sederhana.
-    # Untuk proyek nyata, service ini akan memanggil model ML yang sudah di-train.
     return {"message": "Fitur prediksi sedang dalam pengembangan."}

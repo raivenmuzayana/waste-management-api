@@ -4,7 +4,7 @@ from pydantic import BaseModel
 from database import Base
 
 # --- Model Database (SQLAlchemy) ---
-
+# Nama class ini TETAP 'Location' agar seed.py dan service bisa membacanya
 class Location(Base):
     __tablename__ = "locations"
 
@@ -13,7 +13,6 @@ class Location(Base):
     latitude = Column(Float, nullable=True)
     longitude = Column(Float, nullable=True)
 
-    # Relasi: Satu lokasi punya banyak catatan pengumpulan
     collection_records = relationship("CollectionRecord", back_populates="location")
 
 
@@ -27,7 +26,8 @@ class LocationBase(BaseModel):
 class LocationCreate(LocationBase):
     pass
 
-class Location(LocationBase):
+# GANTI NAMA DI SINI (Dulu 'Location' juga, sekarang 'LocationResponse')
+class LocationResponse(LocationBase):
     id: int
 
     class Config:
