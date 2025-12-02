@@ -1,7 +1,7 @@
 # file: models/collection_model.py
 from sqlalchemy import Column, Integer, Float, DateTime, ForeignKey
 from sqlalchemy.orm import relationship
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 from datetime import datetime
 from database import Base 
 
@@ -23,8 +23,7 @@ class CollectionRecord(Base):  # Ganti nama class jadi CollectionRecord
 
 # --- BAGIAN 2: Pydantic Schemas ---
 class CollectionCreate(BaseModel):
-    volume_kg: float
-    location_id: int
+    volume_kg: float = Field(..., gt=0, description="Volume harus lebih besar dari 0")
     category_id: int
     collection_date: datetime | None = None
 
