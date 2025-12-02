@@ -12,8 +12,8 @@ def setup_dummy_data(client: TestClient, admin_auth_headers: dict):
 
     # Create collection records
     now = datetime.now().isoformat()
-    client.post("/collections/", json={"volume": 10.0, "collection_date": now, "location_id": l1["id"], "category_id": c1["id"]})
-    client.post("/collections/", json={"volume": 30.0, "collection_date": now, "location_id": l2["id"], "category_id": c2["id"]})
+    client.post("/collections/", json={"volume_kg": 10.0, "collection_date": now, "location_id": l1["id"], "category_id": c1["id"]})
+    client.post("/collections/", json={"volume_kg": 30.0, "collection_date": now, "location_id": l2["id"], "category_id": c2["id"]})
 
 
 def test_avg_volume_by_location(client: TestClient, admin_auth_headers):

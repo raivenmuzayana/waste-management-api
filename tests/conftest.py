@@ -1,9 +1,17 @@
+import sys
+import os
 import pytest
 from fastapi.testclient import TestClient
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
+
+# --- PERBAIKAN: Tambahkan path root project ke sys.path ---
+# Ini memastikan Python bisa menemukan modul 'database', 'main', 'models', dll.
+sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+
+# Import modul aplikasi SETELAH sys.path diperbarui
 from database import Base, get_db
-from main import app  # Impor aplikasi FastAPI utama Anda
+from main import app
 from services import auth_service
 from models import user_model
 
