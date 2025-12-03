@@ -21,10 +21,11 @@ def generate_data(jumlah_data: int = 100, db: Session = Depends(get_db)):
         
         # Daftar Nama Lokasi Palsu (Sama seperti seed.py Anda)
         location_names = [
-            "Pasar Induk Gedebage", "TPS 3R Sukaluyu", "Terminal Cicaheum", 
-            "Alun-alun Bandung", "Pasar Kosambi", "Kawasan Dago", 
-            "Komplek Setiabudi", "Mall PVJ Area"
+            "Pasar Induk Kecamatan A", "TPS RT B", "Terminal C", 
+            "Pasar Modern D", "Pasar E", "Kawasan F", 
+            "Komplek G", "Mall H"
         ]
+        
         
         # Daftar Kategori Sampah
         category_names = [
@@ -67,8 +68,8 @@ def generate_data(jumlah_data: int = 100, db: Session = Depends(get_db)):
             # B. Random Volume (5.0 kg - 100.0 kg)
             random_vol = round(random.uniform(5.0, 100.0), 2)
             
-            # C. Random Tanggal (Dalam 30 hari terakhir)
-            days_ago = random.randint(0, 30)
+            # C. Random Tanggal (Dalam 180 hari terakhir)
+            days_ago = random.randint(0, 180)
             random_date = datetime.now() - timedelta(days=days_ago)
             
             # Buat Objek Record
