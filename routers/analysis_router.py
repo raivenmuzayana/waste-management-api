@@ -1,10 +1,11 @@
 from fastapi import APIRouter, Depends
 from sqlalchemy.orm import Session
-from typing import List
+from typing import List, Optional
 from database import get_db
 # Tambahkan location_model di sini
 from models import analysis_model, user_model, location_model
 from services import analysis_service, auth_service
+from datetime import date
 
 router = APIRouter(
     prefix="/analysis",
@@ -30,8 +31,15 @@ def get_waste_distribution(db: Session = Depends(get_db)):
     return analysis_service.get_category_distribution(db)
 
 @router.get("/trend/daily", response_model=List[analysis_model.DailyTrend])
-def get_daily_collection_trend(db: Session = Depends(get_db)):
-    return analysis_service.get_daily_trend(db)
+def get_daily_collection_trend(
+    # Tambahkan dua parameter ini:
+    start_date: Optional[date] = None, 
+    end_date: Optional[date] = None,
+    db: Session = Depends(get_db)
+):
+    #Format tanggal: YYYY-MM-DD (contoh: 2023-12-01)
+    
+    return analysis_service.get_daily_trend(db, start_date=start_date, end_date=end_date)
 
 @router.get("/prediction")
 def get_volume_prediction(db: Session = Depends(get_db)):

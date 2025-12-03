@@ -1,5 +1,6 @@
 from sqlalchemy.orm import Session
 from sqlalchemy import func, desc
+from datetime import date
 from models import collection_model, location_model, category_model
 from typing import List
 import math
@@ -59,13 +60,26 @@ def get_category_distribution(db: Session) -> List:
     return distribution
 
 # --- 5. Tren Harian ---
-def get_daily_trend(db: Session) -> List:
-    result = db.query(
+def get_daily_trend(db: Session, start_date: date = None, end_date: date = None) -> List:
+    # 1. Query Dasar: Ambil tanggal dan total volume
+    query = db.query(
         func.date(collection_model.CollectionRecord.collection_date).label("collection_date"),
         func.sum(collection_model.CollectionRecord.volume_kg).label("total_volume")
-    ).group_by(func.date(collection_model.CollectionRecord.collection_date))\
-     .order_by("collection_date")\
-     .all()
+    )
+
+    # 2. Filter: Jika user memasukkan start_date
+    if start_date:
+        query = query.filter(func.date(collection_model.CollectionRecord.collection_date) >= start_date)
+    
+    # 3. Filter: Jika user memasukkan end_date
+    if end_date:
+        query = query.filter(func.date(collection_model.CollectionRecord.collection_date) <= end_date)
+
+    # 4. Eksekusi: Group by tanggal dan urutkan
+    result = query.group_by(func.date(collection_model.CollectionRecord.collection_date))\
+                  .order_by("collection_date")\
+                  .all()
+    
     return result
 
 # --- 6. Prediksi ---

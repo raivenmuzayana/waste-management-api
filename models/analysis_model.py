@@ -21,3 +21,12 @@ class CategoryDistribution(BaseModel):
 class DailyTrend(BaseModel):
     collection_date: date
     total_volume: float
+
+    # Tambahkan Config ini agar contoh di Swagger UI lebih masuk akal
+    class Config:
+        json_schema_extra = {
+            "example": {
+                "collection_date": "2023-10-27",
+                "total_volume": 1337.42
+            }
+        }
