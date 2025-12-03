@@ -1,10 +1,17 @@
-# file: services/collection_service.py
 from sqlalchemy.orm import Session
 from models.collection_model import CollectionRecord, CollectionCreate
 
 def create_collection(db: Session, collection: CollectionCreate):
-    # Jika collection_date tidak diisi, biarkan default (now) dari database/model
-    data = collection.dict(exclude_unset=True)
+    # PERBAIKAN: Gunakan model_dump() menggantikan .dict()
+    # exclude_unset=True dihapus untuk location_id/category_id agar pasti terkirim
+    # Kita handle collection_date manual jika None
+    
+    data = collection.model_dump()
+    
+    # Jika collection_date tidak diisi (None), hapus dari dict agar SQLAlchemy pakai default datetime.now()
+    if data.get("collection_date") is None:
+        del data["collection_date"]
+
     db_collection = CollectionRecord(**data)
     
     db.add(db_collection)
