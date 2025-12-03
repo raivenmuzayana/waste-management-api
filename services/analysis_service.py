@@ -85,13 +85,12 @@ def get_daily_trend(db: Session, start_date: date = None, end_date: date = None)
     
     return result
 
-# --- 6. Prediksi ---
+# --- 6. Prediksi (Linear Regression) ---
 def get_prediction(db: Session) -> Dict[str, Any]:
     """
     Memprediksi volume sampah untuk 7 hari ke depan menggunakan Linear Regression.
     """
-    # 1. Ambil data historis harian (Total volume per hari)
-    # Kita gunakan query yang sama dengan Daily Trend
+    # 1. Ambil data historis harian
     results = db.query(
         func.date(collection_model.CollectionRecord.collection_date).label("collection_date"),
         func.sum(collection_model.CollectionRecord.volume_kg).label("total_volume")
@@ -99,39 +98,33 @@ def get_prediction(db: Session) -> Dict[str, Any]:
      .order_by("collection_date")\
      .all()
 
-    # Cek jika data terlalu sedikit untuk prediksi
     if len(results) < 2:
         return {
             "status": "error",
             "message": "Data tidak cukup untuk melakukan prediksi. Minimal butuh 2 hari data."
         }
 
-    # 2. Konversi ke Pandas DataFrame untuk kemudahan olah data
+    # 2. Konversi ke Pandas
     data = [{"date": r.collection_date, "volume": r.total_volume} for r in results]
     df = pd.DataFrame(data)
-    
-    # Pastikan kolom date bertipe datetime
     df["date"] = pd.to_datetime(df["date"])
     
-    # 3. Feature Engineering: Ubah tanggal menjadi "Ordinal" (angka) agar bisa dihitung regresi
-    # Kita hitung selisih hari dari tanggal pertama data
+    # 3. Feature Engineering
     start_date = df["date"].min()
     df["days_since_start"] = (df["date"] - start_date).dt.days
 
-    # Siapkan X (fitur) dan y (target)
     X = df[["days_since_start"]]
     y = df["volume"]
 
-    # 4. Latih Model Linear Regression
+    # 4. Latih Model
     model = LinearRegression()
     model.fit(X, y)
 
-    # 5. Lakukan Prediksi untuk 7 Hari ke Depan
+    # 5. Prediksi 7 Hari ke Depan
     last_day_metric = df["days_since_start"].max()
-    future_days = np.array([[last_day_metric + i] for i in range(1, 8)]) # Hari ke-1 s/d 7 besok
+    future_days = np.array([[last_day_metric + i] for i in range(1, 8)])
     predicted_volumes = model.predict(future_days)
 
-    # 6. Format Hasil Prediksi
     predictions = []
     last_date = df["date"].max()
     
@@ -139,18 +132,16 @@ def get_prediction(db: Session) -> Dict[str, Any]:
         next_date = last_date + timedelta(days=i+1)
         predictions.append({
             "date": next_date.strftime("%Y-%m-%d"),
-            "predicted_volume_kg": round(vol, 2) # Bulatkan 2 desimal
+            "predicted_volume_kg": max(0, round(vol, 2)) # Ensure no negative volume
         })
 
-    # Hitung Tren (Koefisien kemiringan/Slope)
-    # Jika positif = tren naik, negatif = tren turun
     slope = model.coef_[0]
     trend_status = "NAIK" if slope > 0 else "TURUN"
 
     return {
         "status": "success",
         "trend_analysis": trend_status,
-        "slope": round(slope, 2), # Rata-rata kenaikan/penurunan per hari
+        "slope": round(slope, 2),
         "predictions": predictions
     }
 
@@ -160,7 +151,7 @@ def calculate_haversine_distance(lat1, lon1, lat2, lon2):
     """
     Menghitung jarak lingkaran besar antara dua titik di bumi (dalam km).
     """
-    R = 6371.0 # Radius bumi dalam km
+    R = 6371.0 
 
     dlat = math.radians(lat2 - lat1)
     dlon = math.radians(lon2 - lon1)
@@ -178,19 +169,22 @@ def get_optimized_route(db: Session) -> List[location_model.Location]:
     Mengembalikan daftar lokasi yang sudah diurutkan berdasarkan rute terpendek
     menggunakan algoritma Greedy (Nearest Neighbor).
     """
-    # 1. Ambil semua lokasi yang memiliki koordinat valid
+    # 1. Ambil semua lokasi yang valid (punya lat/long)
     locations = db.query(location_model.Location).filter(
         location_model.Location.latitude.isnot(None),
         location_model.Location.longitude.isnot(None)
     ).all()
 
+    # Perbaikan Logic: Cek jika data kosong
     if not locations:
         return []
 
-    # 2. Algoritma Nearest Neighbor
+    # Perbaikan Logic: Urutkan dulu berdasarkan ID agar start point konsisten
+    locations.sort(key=lambda x: x.id)
+
     unvisited = locations[:]
     
-    # Mulai dari lokasi pertama yang ditemukan (atau bisa custom logic)
+    # Tentukan Titik Awal (Di sini kita ambil lokasi ID terkecil sebagai depot/start)
     current_location = unvisited.pop(0) 
     route = [current_location]
 
@@ -207,7 +201,7 @@ def get_optimized_route(db: Session) -> List[location_model.Location]:
                 min_dist = dist
                 nearest_location = loc
         
-        # Pindah ke lokasi terdekat
+        # Pindah ke lokasi terdekat yang ditemukan
         if nearest_location:
             route.append(nearest_location)
             unvisited.remove(nearest_location)
