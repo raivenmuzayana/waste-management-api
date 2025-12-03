@@ -18,9 +18,9 @@ def seed_data():
         
         # Daftar Nama Lokasi Palsu
         location_names = [
-            "Pasar Induk Gedebage", "TPS 3R Sukaluyu", "Terminal Cicaheum", 
-            "Alun-alun Bandung", "Pasar Kosambi", "Kawasan Dago", 
-            "Komplek Setiabudi", "Mall PVJ Area"
+            "Pasar Induk Kecamatan A", "TPS RT B", "Terminal C", 
+            "Pasar Modern D", "Pasar E", "Kawasan F", 
+            "Komplek G", "Mall H"
         ]
         
         # Daftar Kategori Sampah
