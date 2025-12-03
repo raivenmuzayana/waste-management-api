@@ -1,8 +1,11 @@
+import numpy as np
+import pandas as pd
+from sklearn.linear_model import LinearRegression
 from sqlalchemy.orm import Session
 from sqlalchemy import func, desc
-from datetime import date
+from datetime import date, timedelta
 from models import collection_model, location_model, category_model
-from typing import List
+from typing import List, Dict, Any
 import math
 
 # --- 1. Rata-rata volume per lokasi ---
@@ -83,8 +86,73 @@ def get_daily_trend(db: Session, start_date: date = None, end_date: date = None)
     return result
 
 # --- 6. Prediksi ---
-def get_prediction(db: Session):
-    return {"message": "Fitur prediksi sedang dalam pengembangan."}
+def get_prediction(db: Session) -> Dict[str, Any]:
+    """
+    Memprediksi volume sampah untuk 7 hari ke depan menggunakan Linear Regression.
+    """
+    # 1. Ambil data historis harian (Total volume per hari)
+    # Kita gunakan query yang sama dengan Daily Trend
+    results = db.query(
+        func.date(collection_model.CollectionRecord.collection_date).label("collection_date"),
+        func.sum(collection_model.CollectionRecord.volume_kg).label("total_volume")
+    ).group_by(func.date(collection_model.CollectionRecord.collection_date))\
+     .order_by("collection_date")\
+     .all()
+
+    # Cek jika data terlalu sedikit untuk prediksi
+    if len(results) < 2:
+        return {
+            "status": "error",
+            "message": "Data tidak cukup untuk melakukan prediksi. Minimal butuh 2 hari data."
+        }
+
+    # 2. Konversi ke Pandas DataFrame untuk kemudahan olah data
+    data = [{"date": r.collection_date, "volume": r.total_volume} for r in results]
+    df = pd.DataFrame(data)
+    
+    # Pastikan kolom date bertipe datetime
+    df["date"] = pd.to_datetime(df["date"])
+    
+    # 3. Feature Engineering: Ubah tanggal menjadi "Ordinal" (angka) agar bisa dihitung regresi
+    # Kita hitung selisih hari dari tanggal pertama data
+    start_date = df["date"].min()
+    df["days_since_start"] = (df["date"] - start_date).dt.days
+
+    # Siapkan X (fitur) dan y (target)
+    X = df[["days_since_start"]]
+    y = df["volume"]
+
+    # 4. Latih Model Linear Regression
+    model = LinearRegression()
+    model.fit(X, y)
+
+    # 5. Lakukan Prediksi untuk 7 Hari ke Depan
+    last_day_metric = df["days_since_start"].max()
+    future_days = np.array([[last_day_metric + i] for i in range(1, 8)]) # Hari ke-1 s/d 7 besok
+    predicted_volumes = model.predict(future_days)
+
+    # 6. Format Hasil Prediksi
+    predictions = []
+    last_date = df["date"].max()
+    
+    for i, vol in enumerate(predicted_volumes):
+        next_date = last_date + timedelta(days=i+1)
+        predictions.append({
+            "date": next_date.strftime("%Y-%m-%d"),
+            "predicted_volume_kg": round(vol, 2) # Bulatkan 2 desimal
+        })
+
+    # Hitung Tren (Koefisien kemiringan/Slope)
+    # Jika positif = tren naik, negatif = tren turun
+    slope = model.coef_[0]
+    trend_status = "NAIK" if slope > 0 else "TURUN"
+
+    return {
+        "status": "success",
+        "trend_analysis": trend_status,
+        "slope": round(slope, 2), # Rata-rata kenaikan/penurunan per hari
+        "predictions": predictions
+    }
 
 # --- 7. Optimasi Rute (TSP Nearest Neighbor) ---
 

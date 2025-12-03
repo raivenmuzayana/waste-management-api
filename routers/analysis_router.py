@@ -1,11 +1,11 @@
 from fastapi import APIRouter, Depends
 from sqlalchemy.orm import Session
-from typing import List, Optional
+from typing import List, Optional, Dict, Any
 from database import get_db
-# Tambahkan location_model di sini
-from models import analysis_model, user_model, location_model
+from models import analysis_model, user_model, location_model, category_model
 from services import analysis_service, auth_service
 from datetime import date
+
 
 router = APIRouter(
     prefix="/analysis",
@@ -41,8 +41,13 @@ def get_daily_collection_trend(
     
     return analysis_service.get_daily_trend(db, start_date=start_date, end_date=end_date)
 
-@router.get("/prediction")
+
+@router.get("/prediction", response_model=Dict[str, Any]) 
 def get_volume_prediction(db: Session = Depends(get_db)):
+    """
+    Mendapatkan prediksi volume sampah untuk 7 hari ke depan
+    berdasarkan data historis menggunakan Linear Regression.
+    """
     return analysis_service.get_prediction(db)
 
 # --- Endpoint Baru: Optimasi Rute ---
