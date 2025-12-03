@@ -1,3 +1,4 @@
+from typing import Optional
 from pydantic import BaseModel
 from datetime import date
 
@@ -21,12 +22,14 @@ class CategoryDistribution(BaseModel):
 class DailyTrend(BaseModel):
     collection_date: date
     total_volume: float
+    # Tambahkan field ini untuk menampung nilai tren
+    moving_average: Optional[float] = None 
 
-    # Tambahkan Config ini agar contoh di Swagger UI lebih masuk akal
     class Config:
         json_schema_extra = {
             "example": {
                 "collection_date": "2023-10-27",
-                "total_volume": 1337.42
+                "total_volume": 1337.42,
+                "moving_average": 1250.50
             }
         }

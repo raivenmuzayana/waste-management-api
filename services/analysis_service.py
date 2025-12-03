@@ -64,26 +64,54 @@ def get_category_distribution(db: Session) -> List:
 
 # --- 5. Tren Harian ---
 def get_daily_trend(db: Session, start_date: date = None, end_date: date = None) -> List:
-    # 1. Query Dasar: Ambil tanggal dan total volume
+    """
+    Mengambil tren harian dengan batasan default 180 hari terakhir.
+    Menghitung 7-Day Moving Average untuk melihat garis tren.
+    """
+    # ATURAN: Data dibuat dalam 180 hari terakhir (jika user tidak kirim filter tanggal)
+    if not start_date:
+        start_date = date.today() - timedelta(days=180)
+
+    # 1. Query Dasar
     query = db.query(
         func.date(collection_model.CollectionRecord.collection_date).label("collection_date"),
         func.sum(collection_model.CollectionRecord.volume_kg).label("total_volume")
     )
 
-    # 2. Filter: Jika user memasukkan start_date
-    if start_date:
-        query = query.filter(func.date(collection_model.CollectionRecord.collection_date) >= start_date)
+    # 2. Terapkan Filter Tanggal
+    query = query.filter(func.date(collection_model.CollectionRecord.collection_date) >= start_date)
     
-    # 3. Filter: Jika user memasukkan end_date
     if end_date:
         query = query.filter(func.date(collection_model.CollectionRecord.collection_date) <= end_date)
 
-    # 4. Eksekusi: Group by tanggal dan urutkan
-    result = query.group_by(func.date(collection_model.CollectionRecord.collection_date))\
-                  .order_by("collection_date")\
-                  .all()
+    # 3. Eksekusi Query
+    results = query.group_by(func.date(collection_model.CollectionRecord.collection_date))\
+                   .order_by("collection_date")\
+                   .all()
     
-    return result
+    if not results:
+        return []
+
+    # 4. Analisis Tren dengan Pandas (Moving Average)
+    # Konversi hasil query (list of tuples) ke DataFrame
+    # SQLAlchemy row bisa diakses via index atau attribute, kita pakai list of dicts biar aman
+    data_list = [{"collection_date": r.collection_date, "total_volume": r.total_volume} for r in results]
+    df = pd.DataFrame(data_list)
+    
+    # Pastikan kolom date bertipe datetime agar urutan benar
+    df["collection_date"] = pd.to_datetime(df["collection_date"])
+    df = df.sort_values("collection_date")
+
+    # Hitung Simple Moving Average (SMA) 7 Hari
+    # Ini membuat garis tren yang lebih halus ("smooth")
+    df["moving_average"] = df["total_volume"].rolling(window=7, min_periods=1).mean()
+
+    # Rounding agar rapi
+    df["total_volume"] = df["total_volume"].round(2)
+    df["moving_average"] = df["moving_average"].round(2)
+
+    # Kembalikan ke format List of Dict untuk JSON Response
+    return df.to_dict(orient="records")
 
 # --- 6. Prediksi (Linear Regression) ---
 def get_prediction(db: Session) -> Dict[str, Any]:

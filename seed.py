@@ -69,8 +69,8 @@ def seed_data():
             # B. Random Volume (Misal antara 5.0 kg sampai 100.0 kg)
             random_vol = round(random.uniform(5.0, 100.0), 2)
             
-            # C. Random Tanggal (Dalam 30 hari terakhir)
-            days_ago = random.randint(0, 30)
+            # C. Random Tanggal (Dalam 180 hari terakhir)
+            days_ago = random.randint(0, 180)
             random_date = datetime.now() - timedelta(days=days_ago)
             
             # Buat Objek Record
