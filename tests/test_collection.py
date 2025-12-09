@@ -20,7 +20,7 @@ def test_create_collection_record(client: TestClient, admin_auth_headers):
 	cat = cat_resp.json()
 
 	payload = {
-		"volume": 12.5,
+		"volume_kg": 12.5,
 		"collection_date": datetime.now().isoformat(),
 		"location_id": loc["id"],
 		"category_id": cat["id"],
@@ -29,7 +29,7 @@ def test_create_collection_record(client: TestClient, admin_auth_headers):
 	response = client.post("/collections/", json=payload)
 	assert response.status_code == 201
 	json_data = response.json()
-	assert json_data["volume"] == payload["volume"]
+	assert json_data["volume_kg"] == payload["volume_kg"]
 	assert json_data["location_id"] == loc["id"]
 	assert json_data["category_id"] == cat["id"]
 	assert "id" in json_data
@@ -40,7 +40,7 @@ def test_get_collection_records(client: TestClient, admin_auth_headers):
 	loc = client.post("/locations/", headers=admin_auth_headers, json={"name": "Lokasi X", "latitude": -6.0, "longitude": 107.0}).json()
 	cat = client.post("/categories/", headers=admin_auth_headers, json={"name": "Anorganik", "description": "Sampah keras"}).json()
 
-	payload = {"volume": 5.0, "collection_date": datetime.now().isoformat(), "location_id": loc["id"], "category_id": cat["id"]}
+	payload = {"volume_kg": 5.0, "collection_date": datetime.now().isoformat(), "location_id": loc["id"], "category_id": cat["id"]}
 	client.post("/collections/", json=payload)
 
 	response = client.get("/collections/")
@@ -54,7 +54,7 @@ def test_get_specific_collection_record(client: TestClient, admin_auth_headers):
 	loc = client.post("/locations/", headers=admin_auth_headers, json={"name": "Lokasi Cek", "latitude": -6.0, "longitude": 107.0}).json()
 	cat = client.post("/categories/", headers=admin_auth_headers, json={"name": "Campuran", "description": "Mixed waste"}).json()
 
-	payload = {"volume": 9.0, "collection_date": datetime.now().isoformat(), "location_id": loc["id"], "category_id": cat["id"]}
+	payload = {"volume_kg": 9.0, "collection_date": datetime.now().isoformat(), "location_id": loc["id"], "category_id": cat["id"]}
 	created = client.post("/collections/", json=payload).json()
 
 	response = client.get(f"/collections/{created['id']}")
