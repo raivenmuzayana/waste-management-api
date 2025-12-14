@@ -23,6 +23,4 @@ def seed_data():
         db.close()
 
 if __name__ == "__main__":
-    seed_waste_data()
-    seed_wine_data()
-    print("=== SELESAI ===")
+    seed_data()
