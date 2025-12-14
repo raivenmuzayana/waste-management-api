@@ -2,85 +2,93 @@ import sys
 import os
 import pytest
 from fastapi.testclient import TestClient
-from sqlalchemy import create_engine
-from sqlalchemy.orm import sessionmaker
+from sqlalchemy import event, text
 
-# --- PERBAIKAN: Tambahkan path root project ke sys.path ---
-# Ini memastikan Python bisa menemukan modul 'database', 'main', 'models', dll.
+# 1. Setup Path
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
-# Import modul aplikasi SETELAH sys.path diperbarui
-from database import Base, get_db
+# 2. Import ASLI dari aplikasi
+from database import SessionLocal, engine
 from main import app
 from services import auth_service
 from models import user_model
 
-# --- Setup Database Testing (SQLite in-memory) ---
-SQLALCHEMY_DATABASE_URL = "sqlite:///:memory:"
-engine = create_engine(SQLALCHEMY_DATABASE_URL, connect_args={"check_same_thread": False})
-TestingSessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
-
-# Buat tabel di database in-memory
-Base.metadata.create_all(bind=engine)
-
-# --- Override Dependency (Penting!) ---
-# Ganti dependency get_db agar menggunakan database tes
-def override_get_db():
-    try:
-        db = TestingSessionLocal()
-        yield db
-    finally:
-        db.close()
-
-# Terapkan override ke aplikasi
-app.dependency_overrides[get_db] = override_get_db
-
-# --- Fixtures (Alat bantu tes) ---
+# --- FIXTURES ---
 
 @pytest.fixture(scope="session")
 def db_engine():
-    Base.metadata.create_all(bind=engine)
+    """Menggunakan engine database asli (MySQL)"""
     yield engine
-    Base.metadata.drop_all(bind=engine)
 
 @pytest.fixture(scope="function")
 def db_session(db_engine):
+    """
+    OPSI AMAN (Safe Mode):
+    Menggunakan Nested Transaction.
+    Meskipun kodemu memanggil db.commit(), data TIDAK akan tersimpan permanen.
+    Setelah tes selesai, semuanya di-rollback.
+    """
     connection = db_engine.connect()
-    transaction = connection.begin()
-    session = TestingSessionLocal(bind=connection)
+    transaction = connection.begin() # Mulai transaksi utama
     
+    # Bind session ke koneksi
+    session = SessionLocal(bind=connection)
+
+    # MULAI REKAYASA (Magic Trick)
+    # Kita mulai 'Nested Transaction' (Savepoint)
+    session.begin_nested()
+
+    # Event Listener:
+    # Setiap kali kodemu memanggil session.commit(), kita tangkap event-nya.
+    # Alih-alih commit ke database, kita hanya restart savepoint-nya.
+    @event.listens_for(session, "after_transaction_end")
+    def restart_savepoint(session, transaction):
+        if transaction.nested and not transaction._parent.nested:
+            session.expire_all()
+            session.begin_nested()
+
     yield session
-    
-    session.rollback()
+
+    # BERSIH-BERSIH
+    session.close()
+    transaction.rollback() # Hapus semua jejak transaksi
     connection.close()
 
 @pytest.fixture(scope="function")
 def client(db_session):
-    # Override DB untuk TestClient
+    # Override get_db agar aplikasi menggunakan session palsu kita (yang aman tadi)
+    from database import get_db
     app.dependency_overrides[get_db] = lambda: db_session
     
     with TestClient(app) as c:
         yield c
-        
-    # Kembalikan override
-    app.dependency_overrides[get_db] = override_get_db
-
+    
+    # Hapus override setelah selesai
+    app.dependency_overrides.clear()
 
 @pytest.fixture(scope="function")
 def test_admin_user(db_session):
-    # Buat user admin di DB tes
+    """
+    Membuat user admin untuk keperluan tes.
+    Karena kita pakai Opsi Aman (Rollback), user ini akan hilang sendiri
+    setelah tes selesai. Jadi aman, tidak akan menumpuk di database.
+    """
+    # Cek dulu barangkali di DB asli emang udah ada user 'testadmin'
+    existing_user = db_session.query(user_model.User).filter_by(username="testadmin").first()
+    if existing_user:
+        return existing_user
+
     admin_user = user_model.User(
         username="testadmin",
         hashed_password=auth_service.get_password_hash("password123"),
         role=user_model.UserRole.ADMIN
     )
     db_session.add(admin_user)
-    db_session.commit()
+    db_session.commit() # Ini akan ditangkap oleh restart_savepoint di atas
     db_session.refresh(admin_user)
     return admin_user
 
 @pytest.fixture(scope="function")
 def admin_auth_headers(test_admin_user):
-    # Buat token untuk admin
     token = auth_service.create_access_token(data={"sub": test_admin_user.username})
     return {"Authorization": f"Bearer {token}"}

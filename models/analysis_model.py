@@ -19,6 +19,11 @@ class CategoryDistribution(BaseModel):
     total_volume: float
     percentage: float
 
+class TopProducingDay(BaseModel):
+    day_name: str
+    total_volume: float
+    percentage: float  # Opsional: agar tahu kontribusi hari itu berapa persen
+
 class DailyTrend(BaseModel):
     collection_date: date
     total_volume: float
