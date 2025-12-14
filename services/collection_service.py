@@ -1,29 +1,32 @@
 from sqlalchemy.orm import Session
-from models.collection_model import Collection, CollectionCreate
+from models.collection_model import CollectionRecord, CollectionCreate
 
-# Fungsi Create (Menambah Catatan)
 def create_collection(db: Session, collection: CollectionCreate):
-    db_collection = Collection(
-        volume=collection.volume,
-        location_id=collection.location_id,
-        category_id=collection.category_id
-    )
+    # PERBAIKAN: Gunakan model_dump() menggantikan .dict()
+    # exclude_unset=True dihapus untuk location_id/category_id agar pasti terkirim
+    # Kita handle collection_date manual jika None
+    
+    data = collection.model_dump()
+    
+    # Jika collection_date tidak diisi (None), hapus dari dict agar SQLAlchemy pakai default datetime.now()
+    if data.get("collection_date") is None:
+        del data["collection_date"]
+
+    db_collection = CollectionRecord(**data)
+    
     db.add(db_collection)
     db.commit()
     db.refresh(db_collection)
     return db_collection
 
-# Fungsi Read All (Melihat semua catatan)
 def get_collections(db: Session, skip: int = 0, limit: int = 100):
-    return db.query(Collection).offset(skip).limit(limit).all()
+    return db.query(CollectionRecord).offset(skip).limit(limit).all()
 
-# Fungsi Read One (Melihat satu catatan berdasarkan ID)
 def get_collection_by_id(db: Session, collection_id: int):
-    return db.query(Collection).filter(Collection.id == collection_id).first()
+    return db.query(CollectionRecord).filter(CollectionRecord.id == collection_id).first()
 
-# Fungsi Delete (Menghapus catatan)
 def delete_collection(db: Session, collection_id: int):
-    db_collection = db.query(Collection).filter(Collection.id == collection_id).first()
+    db_collection = db.query(CollectionRecord).filter(CollectionRecord.id == collection_id).first()
     if db_collection:
         db.delete(db_collection)
         db.commit()

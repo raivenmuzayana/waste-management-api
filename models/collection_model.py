@@ -1,41 +1,41 @@
 from sqlalchemy import Column, Integer, Float, DateTime, ForeignKey
 from sqlalchemy.orm import relationship
-from pydantic import BaseModel
+from pydantic import BaseModel, ConfigDict
 from datetime import datetime
-from database import Base  # Pastikan file database.py sudah dibuat oleh Orang 1
+from database import Base 
 
-# --- BAGIAN 1: SQLAlchemy Model (Tabel Database) ---
-class Collection(Base):
-    __tablename__ = "collections"
+# --- BAGIAN 1: SQLAlchemy Model ---
+class CollectionRecord(Base):
+    __tablename__ = "collection_records"
 
     id = Column(Integer, primary_key=True, index=True)
-    volume = Column(Float, nullable=False) # Berat/Volume sampah
-    collection_date = Column(DateTime, default=datetime.now) # Waktu pengambilan
+    volume_kg = Column(Float, nullable=False)
+    collection_date = Column(DateTime, default=datetime.now)
     
-    # Foreign Keys (Menghubungkan ke tabel Lokasi dan Kategori)
-    location_id = Column(Integer, ForeignKey("locations.id")) 
-    category_id = Column(Integer, ForeignKey("categories.id"))
+    # PERBAIKAN: Set nullable=False agar wajib diisi
+    location_id = Column(Integer, ForeignKey("locations.id"), nullable=False) 
+    category_id = Column(Integer, ForeignKey("waste_categories.id"), nullable=False)
 
-    # Relationship (Opsional, agar bisa memanggil data detail)
-    # location = relationship("Location", back_populates="collections")
-    # category = relationship("Category", back_populates="collections")
+    # Relasi
+    location = relationship("Location", back_populates="collection_records")
+    waste_category = relationship("WasteCategory", back_populates="collection_records")
 
-# --- BAGIAN 2: Pydantic Schemas (Validasi Request/Response) ---
-
-# Schema untuk input data (Create)
+# --- BAGIAN 2: Pydantic Schemas ---
 class CollectionCreate(BaseModel):
-    volume: float
+    volume_kg: float
     location_id: int
     category_id: int
-    # collection_date opsional, jika kosong pakai waktu sekarang
+    collection_date: datetime | None = None
 
-# Schema untuk output data (Response)
+    # Konfigurasi Pydantic V2
+    model_config = ConfigDict(from_attributes=True)
+
 class CollectionResponse(BaseModel):
     id: int
-    volume: float
+    volume_kg: float
     collection_date: datetime
     location_id: int
     category_id: int
 
-    class Config:
-        from_attributes = True # Agar kompatibel dengan ORM SQLAlchemy
+    # Konfigurasi Pydantic V2
+    model_config = ConfigDict(from_attributes=True)

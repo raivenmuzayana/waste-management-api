@@ -4,7 +4,6 @@ from pydantic import BaseModel
 from database import Base
 
 # --- Model Database (SQLAlchemy) ---
-
 class WasteCategory(Base):
     __tablename__ = "waste_categories"
 
@@ -12,7 +11,6 @@ class WasteCategory(Base):
     name = Column(String(50), unique=True, index=True, nullable=False)
     description = Column(String(255), nullable=True)
 
-    # Relasi: Satu kategori punya banyak catatan pengumpulan
     collection_records = relationship("CollectionRecord", back_populates="waste_category")
 
 
@@ -25,7 +23,8 @@ class WasteCategoryBase(BaseModel):
 class WasteCategoryCreate(WasteCategoryBase):
     pass
 
-class WasteCategory(WasteCategoryBase):
+# GANTI NAMA DI SINI (Dulu 'WasteCategory' juga, sekarang 'WasteCategoryResponse')
+class WasteCategoryResponse(WasteCategoryBase):
     id: int
 
     class Config:
