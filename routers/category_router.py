@@ -11,12 +11,12 @@ router = APIRouter(
     dependencies=[Depends(auth_service.get_current_user)]
 )
 
-@router.get("/", response_model=List[category_model.WasteCategory])
+@router.get("/", response_model=List[category_model.WasteCategoryResponse])
 def read_categories(skip: int = 0, limit: int = 100, db: Session = Depends(get_db)):
     categories = category_service.get_categories(db, skip=skip, limit=limit)
     return categories
 
-@router.get("/{category_id}", response_model=category_model.WasteCategory)
+@router.get("/{category_id}", response_model=category_model.WasteCategoryResponse)
 def read_category(category_id: int, db: Session = Depends(get_db)):
     db_category = category_service.get_category(db, category_id=category_id)
     if db_category is None:
