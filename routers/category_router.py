@@ -11,6 +11,7 @@ router = APIRouter(
     dependencies=[Depends(auth_service.get_current_user)]
 )
 
+<<<<<<< Updated upstream
 @router.post("/", response_model=category_model.WasteCategory, status_code=status.HTTP_201_CREATED)
 def create_new_category(
     category: category_model.WasteCategoryCreate, 
@@ -18,6 +19,9 @@ def create_new_category(
     current_admin: user_model.User = Depends(auth_service.get_current_admin_user)
 ):
     return category_service.create_category(db=db, category=category)
+=======
+
+>>>>>>> Stashed changes
 
 @router.get("/", response_model=List[category_model.WasteCategory])
 def read_categories(skip: int = 0, limit: int = 100, db: Session = Depends(get_db)):
