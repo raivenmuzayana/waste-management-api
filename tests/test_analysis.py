@@ -78,3 +78,24 @@ def test_prediction_placeholder(client: TestClient, admin_auth_headers):
         # Jika data cukup (kebetulan), cek strukturnya
         assert "predictions" in json_data
         assert "trend_analysis" in json_data
+
+def test_top_producing_days(client: TestClient, admin_auth_headers):
+    # 1. Siapkan data dummy agar ada yang bisa dihitung
+    setup_dummy_data(client, admin_auth_headers)
+
+    # 2. Panggil endpoint baru
+    response = client.get("/analysis/top-days", headers=admin_auth_headers)
+    
+    # 3. Pastikan status 200 OK
+    assert response.status_code == 200
+    
+    # 4. Cek struktur data
+    json_data = response.json()
+    assert isinstance(json_data, list) # Harus berupa list
+    
+    # Jika data berhasil ter-generate, cek key di dalamnya
+    if len(json_data) > 0:
+        first_item = json_data[0]
+        assert "day_name" in first_item      # Pastikan ada nama hari
+        assert "total_volume" in first_item  # Pastikan ada total volume
+        assert "percentage" in first_item    # Pastikan ada persentase

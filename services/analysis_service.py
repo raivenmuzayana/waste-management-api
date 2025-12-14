@@ -113,6 +113,52 @@ def get_daily_trend(db: Session, start_date: date = None, end_date: date = None)
     # Kembalikan ke format List of Dict untuk JSON Response
     return df.to_dict(orient="records")
 
+# --- 8. Analisis Top Producing Day (Baru) ---
+def get_top_producing_days(db: Session) -> List[Dict[str, Any]]:
+    """
+    Menganalisis akumulasi volume sampah berdasarkan HARI (Senin - Minggu).
+    """
+    # 1. Query Data (Hanya tanggal dan volume)
+    results = db.query(
+        collection_model.CollectionRecord.collection_date,
+        collection_model.CollectionRecord.volume_kg
+    ).all()
+
+    if not results:
+        return []
+
+    # 2. Masukkan ke Pandas DataFrame
+    data = [{"date": r.collection_date, "volume": r.volume_kg} for r in results]
+    df = pd.DataFrame(data)
+
+    # 3. Preprocessing Date
+    df["date"] = pd.to_datetime(df["date"])
+    
+    # Ekstrak nama hari (Monday, Tuesday, etc.)
+    df["day_name"] = df["date"].dt.day_name()
+
+    # 4. Grouping & Sum
+    grouped = df.groupby("day_name")["volume"].sum().reset_index()
+
+    # 5. Hitung Persentase
+    total_vol = grouped["volume"].sum()
+    grouped["percentage"] = (grouped["volume"] / total_vol) * 100
+
+    # 6. Sorting (Terbesar ke Terkecil)
+    grouped = grouped.sort_values(by="volume", ascending=False)
+
+    # 7. Formatting output
+    # Kita bulatkan angkanya agar rapi
+    result_list = []
+    for _, row in grouped.iterrows():
+        result_list.append({
+            "day_name": row["day_name"],
+            "total_volume": round(row["volume"], 2),
+            "percentage": round(row["percentage"], 1)
+        })
+
+    return result_list
+
 # --- 6. Prediksi (Linear Regression) ---
 def get_prediction(db: Session) -> Dict[str, Any]:
     """

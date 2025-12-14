@@ -1,3 +1,4 @@
+
 from sqlalchemy import Column, Integer, String, Enum as SAEnum
 from sqlalchemy.orm import relationship
 from pydantic import BaseModel

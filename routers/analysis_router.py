@@ -42,6 +42,14 @@ def get_daily_collection_trend(
     return analysis_service.get_daily_trend(db, start_date=start_date, end_date=end_date)
 
 
+@router.get("/top-days", response_model=List[analysis_model.TopProducingDay])
+def get_top_producing_days_analysis(db: Session = Depends(get_db)):
+    """
+    Mendapatkan peringkat hari (Senin-Minggu) dengan volume sampah terbanyak.
+    Berguna untuk menentukan jadwal pengangkutan ekstra.
+    """
+    return analysis_service.get_top_producing_days(db)
+
 @router.get("/prediction", response_model=Dict[str, Any]) 
 def get_volume_prediction(db: Session = Depends(get_db)):
     """
