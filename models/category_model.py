@@ -20,9 +20,6 @@ class WasteCategoryBase(BaseModel):
     name: str
     description: str | None = None
 
-class WasteCategoryCreate(WasteCategoryBase):
-    pass
-
 # GANTI NAMA DI SINI (Dulu 'WasteCategory' juga, sekarang 'WasteCategoryResponse')
 class WasteCategoryResponse(WasteCategoryBase):
     id: int
