@@ -1,5 +1,5 @@
 from sqlalchemy.orm import Session
-from models.collection_model import CollectionRecord, CollectionCreate
+from models.collection_model import CollectionRecord, CollectionCreate, CollectionUpdate
 
 def create_collection(db: Session, collection: CollectionCreate):
     # PERBAIKAN: Gunakan model_dump() menggantikan .dict()
@@ -32,3 +32,17 @@ def delete_collection(db: Session, collection_id: int):
         db.commit()
         return True
     return False
+
+def update_collection(db: Session, collection_id: int, collection_data: CollectionUpdate):
+    db_collection = db.query(CollectionRecord).filter(CollectionRecord.id == collection_id).first()
+    if not db_collection:
+        return None
+
+    update_data = collection_data.model_dump(exclude_unset=True)
+    
+    for key, value in update_data.items():
+        setattr(db_collection, key, value)
+
+    db.commit()
+    db.refresh(db_collection)
+    return db_collection

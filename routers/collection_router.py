@@ -4,7 +4,9 @@ from typing import List
 
 from database import get_db # Import dari Orang 1
 from services import collection_service
-from models.collection_model import CollectionCreate, CollectionResponse
+from models.collection_model import CollectionCreate, CollectionResponse, CollectionUpdate 
+from services import auth_service # Butuh auth untuk edit
+from models import user_model
 
 router = APIRouter(
     prefix="/collections",
@@ -37,3 +39,16 @@ def remove_collection(collection_id: int, db: Session = Depends(get_db)):
     if not success:
         raise HTTPException(status_code=404, detail="Catatan tidak ditemukan")
     return None
+
+@router.put("/{collection_id}", response_model=CollectionResponse)
+def update_collection_item(
+    collection_id: int, 
+    collection_data: CollectionUpdate, 
+    db: Session = Depends(get_db),
+    # Kita proteksi edit data sampah, minimal harus user terdaftar (Admin/Analyst)
+    current_user: user_model.User = Depends(auth_service.get_current_user) 
+):
+    updated_collection = collection_service.update_collection(db, collection_id, collection_data)
+    if not updated_collection:
+        raise HTTPException(status_code=404, detail="Catatan tidak ditemukan")
+    return updated_collection
