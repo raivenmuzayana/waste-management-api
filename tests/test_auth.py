@@ -2,11 +2,6 @@ from fastapi.testclient import TestClient
 from sqlalchemy.orm import Session
 from models import user_model
 
-def test_create_admin_user(client: TestClient, db_session: Session):
-    # Tes ini tidak bisa dijalankan langsung karena /register butuh auth admin
-    # Jadi kita buat admin dulu di conftest
-    pass
-
 def test_admin_login(client: TestClient, test_admin_user):
     response = client.post(
         "/auth/login",
