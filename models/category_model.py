@@ -1,6 +1,6 @@
 from sqlalchemy import Column, Integer, String
 from sqlalchemy.orm import relationship
-from pydantic import BaseModel
+from pydantic import BaseModel, ConfigDict
 from database import Base
 
 # --- Model Database (SQLAlchemy) ---
@@ -20,9 +20,17 @@ class WasteCategoryBase(BaseModel):
     name: str
     description: str | None = None
 
-# GANTI NAMA DI SINI (Dulu 'WasteCategory' juga, sekarang 'WasteCategoryResponse')
+# 1. CREATE (Dikembalikan)
+class WasteCategoryCreate(WasteCategoryBase):
+    pass
+
+# 2. UPDATE (Baru - semua field opsional)
+class WasteCategoryUpdate(BaseModel):
+    name: str | None = None
+    description: str | None = None
+
+# 3. RESPONSE
 class WasteCategoryResponse(WasteCategoryBase):
     id: int
 
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)
