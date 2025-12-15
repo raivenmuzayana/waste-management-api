@@ -6,6 +6,16 @@ __pycache__/
 # C extensions
 *.so
 
+# Virtual Environment
+waste-management-api/
+.venv/
+venv/
+__pycache__/
+
+# accidental nested repo
+waste-management-api/
+
+
 # Distribution / packaging
 .Python
 build/

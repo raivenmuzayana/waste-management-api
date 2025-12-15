@@ -26,6 +26,12 @@ class LocationBase(BaseModel):
 class LocationCreate(LocationBase):
     pass
 
+# --- Tambahkan Class ini ---
+class LocationUpdate(BaseModel):
+    name: str | None = None
+    latitude: float | None = None
+    longitude: float | None = None
+
 # GANTI NAMA DI SINI (Dulu 'Location' juga, sekarang 'LocationResponse')
 class LocationResponse(LocationBase):
     id: int
