@@ -8,7 +8,6 @@ __pycache__/
 
 # Virtual Environment
 waste-management-api/
-test-env/
 .venv/
 venv/
 __pycache__/
