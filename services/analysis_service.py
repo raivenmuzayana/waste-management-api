@@ -282,3 +282,43 @@ def get_optimized_route(db: Session) -> List[location_model.Location]:
             current_location = nearest_location
             
     return route
+
+def get_location_category_pivot(db: Session):
+    query = db.query(
+        location_model.Location.name.label("location"),
+        category_model.WasteCategory.name.label("category"),
+        func.sum(collection_model.CollectionRecord.volume_kg).label("volume")
+    ).join(collection_model.CollectionRecord, location_model.Location.id == collection_model.CollectionRecord.location_id)\
+     .join(category_model.WasteCategory, category_model.WasteCategory.id == collection_model.CollectionRecord.category_id)\
+     .group_by(location_model.Location.name, category_model.WasteCategory.name).all()
+
+    data = []
+    for row in query:
+        data.append({
+            "location": row.location,
+            "category": row.category,
+            "volume": round(row.volume, 2)
+        })
+    return data
+
+def get_dashboard_summary(db: Session) -> Dict:
+    # 1. Total Sampah
+    total = db.query(func.sum(collection_model.CollectionRecord.volume_kg)).scalar() or 0
+    
+    # 2. Total Lokasi Aktif
+    loc_count = db.query(func.count(location_model.Location.id)).scalar() or 0
+    
+    # 3. Lokasi Paling Kotor
+    top_loc = get_top_locations(db, limit=1)
+    top_loc_name = top_loc[0].location_name if top_loc else "-"
+    
+    # 4. Hari Tersibuk
+    top_day = get_top_producing_days(db)
+    busiest = top_day[0]['day_name'] if top_day else "-"
+
+    return {
+        "total_waste_kg": round(total, 2),
+        "total_locations": loc_count,
+        "most_polluted_location": top_loc_name,
+        "busiest_day": busiest
+    }

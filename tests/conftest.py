@@ -13,7 +13,7 @@ from main import app
 from services import auth_service
 from models import user_model
 
-# --- FIXTURES ---
+# --- FIXTURES DATABASE & CLIENT ---
 
 @pytest.fixture(scope="session")
 def db_engine():
@@ -23,24 +23,14 @@ def db_engine():
 @pytest.fixture(scope="function")
 def db_session(db_engine):
     """
-    OPSI AMAN (Safe Mode):
-    Menggunakan Nested Transaction.
-    Meskipun kodemu memanggil db.commit(), data TIDAK akan tersimpan permanen.
-    Setelah tes selesai, semuanya di-rollback.
+    OPSI AMAN (Safe Mode) dengan Nested Transaction.
+    Data akan di-rollback setelah setiap tes selesai.
     """
     connection = db_engine.connect()
-    transaction = connection.begin() # Mulai transaksi utama
-    
-    # Bind session ke koneksi
+    transaction = connection.begin()
     session = SessionLocal(bind=connection)
-
-    # MULAI REKAYASA (Magic Trick)
-    # Kita mulai 'Nested Transaction' (Savepoint)
     session.begin_nested()
 
-    # Event Listener:
-    # Setiap kali kodemu memanggil session.commit(), kita tangkap event-nya.
-    # Alih-alih commit ke database, kita hanya restart savepoint-nya.
     @event.listens_for(session, "after_transaction_end")
     def restart_savepoint(session, transaction):
         if transaction.nested and not transaction._parent.nested:
@@ -49,46 +39,62 @@ def db_session(db_engine):
 
     yield session
 
-    # BERSIH-BERSIH
     session.close()
-    transaction.rollback() # Hapus semua jejak transaksi
+    transaction.rollback()
     connection.close()
 
 @pytest.fixture(scope="function")
 def client(db_session):
-    # Override get_db agar aplikasi menggunakan session palsu kita (yang aman tadi)
     from database import get_db
     app.dependency_overrides[get_db] = lambda: db_session
-    
     with TestClient(app) as c:
         yield c
-    
-    # Hapus override setelah selesai
     app.dependency_overrides.clear()
+
+# --- FIXTURES USER & AUTHENTICATION ---
 
 @pytest.fixture(scope="function")
 def test_admin_user(db_session):
-    """
-    Membuat user admin untuk keperluan tes.
-    Karena kita pakai Opsi Aman (Rollback), user ini akan hilang sendiri
-    setelah tes selesai. Jadi aman, tidak akan menumpuk di database.
-    """
-    # Cek dulu barangkali di DB asli emang udah ada user 'testadmin'
-    existing_user = db_session.query(user_model.User).filter_by(username="testadmin").first()
-    if existing_user:
-        return existing_user
-
-    admin_user = user_model.User(
-        username="testadmin",
-        hashed_password=auth_service.get_password_hash("password123"),
-        role=user_model.UserRole.ADMIN
-    )
-    db_session.add(admin_user)
-    db_session.commit() # Ini akan ditangkap oleh restart_savepoint di atas
-    db_session.refresh(admin_user)
-    return admin_user
+    """Membuat user ADMIN sementara"""
+    # Cek user lama (preventif)
+    user = db_session.query(user_model.User).filter_by(username="testadmin").first()
+    if not user:
+        user = user_model.User(
+            username="testadmin",
+            hashed_password=auth_service.get_password_hash("password123"),
+            role=user_model.UserRole.ADMIN
+        )
+        db_session.add(user)
+        db_session.commit()
+        db_session.refresh(user)
+    return user
 
 @pytest.fixture(scope="function")
-def admin_auth_headers(test_admin_user):
-    token = auth_service.create_access_token(data={"sub": test_admin_user.username})
-    return {"Authorization": f"Bearer {token}"}
+def test_analyst_user(db_session):
+    """Membuat user DATA ANALYST sementara (BARU)"""
+    user = db_session.query(user_model.User).filter_by(username="testanalyst").first()
+    if not user:
+        user = user_model.User(
+            username="testanalyst",
+            hashed_password=auth_service.get_password_hash("password123"),
+            role=user_model.UserRole.DATA_ANALYST
+        )
+        db_session.add(user)
+        db_session.commit()
+        db_session.refresh(user)
+    return user
+
+@pytest.fixture(scope="function")
+def admin_token(test_admin_user):
+    """Mengembalikan STRING token (bukan dict header)"""
+    return auth_service.create_access_token(data={"sub": test_admin_user.username})
+
+@pytest.fixture(scope="function")
+def analyst_token(test_analyst_user):
+    """Mengembalikan STRING token untuk analyst (BARU)"""
+    return auth_service.create_access_token(data={"sub": test_analyst_user.username})
+
+# Opsional: Jika ada tes lama yang pakai header langsung
+@pytest.fixture(scope="function")
+def admin_auth_headers(admin_token):
+    return {"Authorization": f"Bearer {admin_token}"}

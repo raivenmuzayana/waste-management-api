@@ -38,3 +38,21 @@ class DailyTrend(BaseModel):
                 "moving_average": 1250.50
             }
         }
+
+class PivotData(BaseModel):
+    location: str
+    category: str
+    volume: float
+
+# --- Tambahan untuk KPI Cards (Dashboard Summary) ---
+class DashboardSummary(BaseModel):
+    total_waste_kg: float
+    total_locations: int
+    most_polluted_location: str
+    busiest_day: str
+
+class DashboardSummary(BaseModel):
+    total_waste_kg: float
+    total_locations: int
+    most_polluted_location: str
+    busiest_day: str

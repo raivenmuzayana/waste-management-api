@@ -37,3 +37,21 @@ def test_read_category_by_id_success(client, db_session, admin_auth_headers):
     data = response.json()
     assert data["id"] == category.id
     assert data["name"] == category.name
+
+def test_create_category(client, admin_token):
+    # Tes Create (Butuh Admin)
+    response = client.post(
+        "/categories/",
+        json={"name": "Elektronik", "description": "Sampah gadget"},
+        headers={"Authorization": f"Bearer {admin_token}"}
+    )
+    
+    assert response.status_code == 201 
+    
+    assert response.json()["name"] == "Elektronik"
+
+def test_get_categories(client, admin_token):
+    # Tes Read
+    response = client.get("/categories/", headers={"Authorization": f"Bearer {admin_token}"})
+    assert response.status_code == 200
+    assert isinstance(response.json(), list)

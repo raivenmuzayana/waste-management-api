@@ -18,3 +18,7 @@ def test_get_me(client: TestClient, admin_auth_headers):
     json_data = response.json()
     assert json_data["username"] == "testadmin"
     assert json_data["role"] == "admin"
+
+def test_delete_category_as_analyst_fail(client, analyst_token):
+    response = client.delete("/categories/1", headers={"Authorization": f"Bearer {analyst_token}"})
+    assert response.status_code == 403 # Harus Forbidden

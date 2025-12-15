@@ -107,3 +107,11 @@ def test_top_producing_days(client: TestClient, db_session, admin_auth_headers):
         assert "day_name" in data[0]
         assert "total_volume" in data[0]
         assert "percentage" in data[0]
+
+
+def test_dashboard_summary(client, admin_token):
+    response = client.get("/analysis/summary", headers={"Authorization": f"Bearer {admin_token}"})
+    assert response.status_code == 200
+    data = response.json()
+    assert "total_waste_kg" in data
+    assert "most_polluted_location" in data

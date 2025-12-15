@@ -156,3 +156,8 @@ def test_delete_used_location_should_fail(client: TestClient, db_session, admin_
 
     assert response.status_code == 400
     assert response.json()["detail"]
+
+def test_route_optimization(client, admin_token):
+    response = client.get("/analysis/route/optimize", headers={"Authorization": f"Bearer {admin_token}"})
+    assert response.status_code == 200
+    assert isinstance(response.json(), list)

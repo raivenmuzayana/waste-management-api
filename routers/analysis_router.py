@@ -37,32 +37,31 @@ def get_daily_collection_trend(
     end_date: Optional[date] = None,
     db: Session = Depends(get_db)
 ):
-    #Format tanggal: YYYY-MM-DD (contoh: 2023-12-01)
-    
+    #Format tanggal: YYYY-MM-DD 
     return analysis_service.get_daily_trend(db, start_date=start_date, end_date=end_date)
 
 
 @router.get("/top-days", response_model=List[analysis_model.TopProducingDay])
 def get_top_producing_days_analysis(db: Session = Depends(get_db)):
-    """
-    Mendapatkan peringkat hari (Senin-Minggu) dengan volume sampah terbanyak.
-    Berguna untuk menentukan jadwal pengangkutan ekstra.
-    """
     return analysis_service.get_top_producing_days(db)
 
 @router.get("/prediction", response_model=Dict[str, Any]) 
 def get_volume_prediction(db: Session = Depends(get_db)):
-    """
-    Mendapatkan prediksi volume sampah untuk 7 hari ke depan
-    berdasarkan data historis menggunakan Linear Regression.
-    """
+    # Linear Regression.
     return analysis_service.get_prediction(db)
 
-# --- Endpoint Baru: Optimasi Rute ---
 @router.get("/route/optimize", response_model=List[location_model.LocationResponse])
 def get_optimized_waste_collection_route(db: Session = Depends(get_db)):
-    """
-    Mendapatkan urutan lokasi pengambilan sampah yang efisien 
-    berdasarkan jarak terdekat (Traveling Salesperson Problem - Nearest Neighbor).
-    """
+    #  Traveling Salesperson Problem Nearest Neighbor
+    
     return analysis_service.get_optimized_route(db)
+
+@router.get("/heatmap/location-category", response_model=List[analysis_model.PivotData])
+def get_heatmap_data(db: Session = Depends(get_db)):
+    return analysis_service.get_location_category_pivot(db)
+
+@router.get("/summary", response_model=analysis_model.DashboardSummary)
+def get_dashboard_summary(db: Session = Depends(get_db)):
+
+    return analysis_service.get_dashboard_summary(db)
+
