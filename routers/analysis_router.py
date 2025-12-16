@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends,Query
 from sqlalchemy.orm import Session
 from typing import List, Optional, Dict, Any
 from database import get_db
@@ -42,17 +42,16 @@ def get_waste_distribution(db: Session = Depends(get_db)):
     """
     return analysis_service.get_category_distribution(db)
 
-@router.get("/trend/daily", response_model=List[analysis_model.DailyTrend])
+@router.get("/trend/daily", response_model=analysis_model.DailyTrendResponse)
 def get_daily_collection_trend(
-    # Tambahkan dua parameter ini:
-    start_date: Optional[date] = None, 
-    end_date: Optional[date] = None,
+    # Tambahkan Query(..., description="...") untuk dokumentasi yang jelas
+    start_date: Optional[date] = Query(None, description="Format: YYYY-MM-DD (Misal: 2023-01-01)"), 
+    end_date: Optional[date] = Query(None, description="Format: YYYY-MM-DD (Misal: 2023-12-31)"),
     db: Session = Depends(get_db)
 ):
     """
-    Menampilkan data deret waktu (time series) volume sampah harian dilengkapi dengan indikator Moving Average (7-hari)
+    Menampilkan data deret waktu volume sampah harian + Status Tren (NAIK/TURUN).
     """
-    #Format tanggal: YYYY-MM-DD 
     return analysis_service.get_daily_trend(db, start_date=start_date, end_date=end_date)
 
 

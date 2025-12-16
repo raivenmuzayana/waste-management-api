@@ -77,12 +77,24 @@ def test_category_distribution(client: TestClient, db_session, admin_auth_header
     assert isinstance(response.json(), list)
 
 
-def test_daily_trend(client: TestClient, db_session, admin_auth_headers):
+# tests/test_analysis.py
+
+def test_daily_trend(client, db_session, admin_auth_headers):
+    # (Setup data dummy...)
     setup_dummy_data(client, db_session, admin_auth_headers)
 
     response = client.get("/analysis/trend/daily", headers=admin_auth_headers)
     assert response.status_code == 200
-    assert isinstance(response.json(), list)
+    
+    json_data = response.json()
+    
+    # ASSERT STRUKTUR BARU
+    assert "trend_status" in json_data       # Cek field status
+    assert "data" in json_data               # Cek field data list
+    assert isinstance(json_data["data"], list)
+    
+    if len(json_data["data"]) > 0:
+        assert "moving_average" in json_data["data"][0]
 
 def test_prediction_placeholder(client: TestClient, admin_auth_headers):
     response = client.get("/analysis/prediction", headers=admin_auth_headers)
@@ -113,8 +125,14 @@ def test_dashboard_summary(client, admin_token):
     response = client.get("/analysis/summary", headers={"Authorization": f"Bearer {admin_token}"})
     assert response.status_code == 200
     data = response.json()
+    
+    # Assert field lama
     assert "total_waste_kg" in data
     assert "most_polluted_location" in data
+    
+    # Assert field baru
+    assert "trend_status" in data
+    assert data["trend_status"] in ["NAIK", "TURUN", "STABIL"]
 
 def test_heatmap_data(client, db_session, admin_auth_headers):
     # Setup dummy data...

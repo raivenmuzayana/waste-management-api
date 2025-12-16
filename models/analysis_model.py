@@ -1,4 +1,4 @@
-from typing import Optional
+from typing import Optional,List,Any
 from pydantic import BaseModel
 from datetime import date
 
@@ -38,11 +38,14 @@ class DailyTrend(BaseModel):
                 "moving_average": 1250.50
             }
         }
+class DailyTrendResponse(BaseModel):
+    trend_status: str # "NAIK", "TURUN", "STABIL"
+    data: List[DailyTrend]
 
-class PivotData(BaseModel):
-    location: str
-    category: str
-    volume: float
+class HeatmapResponse(BaseModel):
+    x_axis: List[str]       # List Kategori
+    y_axis: List[str]       # List Lokasi
+    data: List[List[float]] # Matrix Angka
 
 # --- Tambahan untuk KPI Cards (Dashboard Summary) ---
 class DashboardSummary(BaseModel):
@@ -50,3 +53,4 @@ class DashboardSummary(BaseModel):
     total_locations: int
     most_polluted_location: str
     busiest_day: str
+    trend_status: str

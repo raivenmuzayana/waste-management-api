@@ -63,12 +63,11 @@ def get_category_distribution(db: Session) -> List:
     return distribution
 
 # --- 5. Tren Harian ---
-def get_daily_trend(db: Session, start_date: date = None, end_date: date = None) -> List:
+def get_daily_trend(db: Session, start_date: date = None, end_date: date = None) -> Dict[str, Any]: # Ubah type hint return
     """
-    Mengambil tren harian dengan batasan default 180 hari terakhir.
-    Menghitung 7-Day Moving Average untuk melihat garis tren.
+    Mengambil tren harian & menghitung status NAIK/TURUN.
     """
-    # ATURAN: Data dibuat dalam 180 hari terakhir (jika user tidak kirim filter tanggal)
+    # ATURAN: Default 180 hari terakhir
     if not start_date:
         start_date = date.today() - timedelta(days=180)
 
@@ -78,40 +77,62 @@ def get_daily_trend(db: Session, start_date: date = None, end_date: date = None)
         func.sum(collection_model.CollectionRecord.volume_kg).label("total_volume")
     )
 
-    # 2. Terapkan Filter Tanggal
+    # 2. Filter Tanggal
     query = query.filter(func.date(collection_model.CollectionRecord.collection_date) >= start_date)
-    
     if end_date:
         query = query.filter(func.date(collection_model.CollectionRecord.collection_date) <= end_date)
 
-    # 3. Eksekusi Query
+    # 3. Eksekusi
     results = query.group_by(func.date(collection_model.CollectionRecord.collection_date))\
                    .order_by("collection_date")\
                    .all()
     
+    # Handle jika data kosong
     if not results:
-        return []
+        return {
+            "trend_status": "STABIL",
+            "data": []
+        }
 
-    # 4. Analisis Tren dengan Pandas (Moving Average)
-    # Konversi hasil query (list of tuples) ke DataFrame
-    # SQLAlchemy row bisa diakses via index atau attribute, kita pakai list of dicts biar aman
+    # 4. Analisis Tren dengan Pandas
     data_list = [{"collection_date": r.collection_date, "total_volume": r.total_volume} for r in results]
     df = pd.DataFrame(data_list)
     
-    # Pastikan kolom date bertipe datetime agar urutan benar
     df["collection_date"] = pd.to_datetime(df["collection_date"])
     df = df.sort_values("collection_date")
 
-    # Hitung Simple Moving Average (SMA) 7 Hari
-    # Ini membuat garis tren yang lebih halus ("smooth")
+    # Moving Average
     df["moving_average"] = df["total_volume"].rolling(window=7, min_periods=1).mean()
 
-    # Rounding agar rapi
+    # Rounding
     df["total_volume"] = df["total_volume"].round(2)
     df["moving_average"] = df["moving_average"].round(2)
 
-    # Kembalikan ke format List of Dict untuk JSON Response
-    return df.to_dict(orient="records")
+    # --- 5. LOGIKA BARU: Tentukan Status NAIK/TURUN ---
+    # Kita gunakan Linear Regression sederhana pada data yang ada untuk melihat 'slope' (kemiringan)
+    # Jika slope positif = NAIK, negatif = TURUN
+    
+    trend_status = "STABIL"
+    if len(df) > 1:
+        # Buat urutan hari (0, 1, 2, ...) sebagai X
+        x = np.arange(len(df))
+        y = df["total_volume"].values
+        
+        # Fit user-friendly polynomial (degree 1 = linear)
+        slope, intercept = np.polyfit(x, y, 1)
+        
+        if slope > 0.05: # Threshold toleransi sedikit
+            trend_status = "NAIK"
+        elif slope < -0.05:
+            trend_status = "TURUN"
+        else:
+            trend_status = "STABIL"
+
+    # 6. Return Format Baru
+    return {
+        "trend_status": trend_status,
+        "data": df.to_dict(orient="records")
+    }
 
 # --- 8. Analisis Top Producing Day (Baru) ---
 def get_top_producing_days(db: Session) -> List[Dict[str, Any]]:
@@ -284,25 +305,37 @@ def get_optimized_route(db: Session) -> List[location_model.Location]:
     return route
 
 def get_location_category_pivot(db: Session):
+    # 1. Ambil data mentah (Sama seperti query Anda, tapi ambil semua)
     query = db.query(
         location_model.Location.name.label("location"),
         category_model.WasteCategory.name.label("category"),
-        func.sum(collection_model.CollectionRecord.volume_kg).label("volume")
+        collection_model.CollectionRecord.volume_kg
     ).join(collection_model.CollectionRecord, location_model.Location.id == collection_model.CollectionRecord.location_id)\
      .join(category_model.WasteCategory, category_model.WasteCategory.id == collection_model.CollectionRecord.category_id)\
-     .group_by(location_model.Location.name, category_model.WasteCategory.name).all()
+     .all()
 
-    data = []
-    for row in query:
-        data.append({
-            "location": row.location,
-            "category": row.category,
-            "volume": round(row.volume, 2)
-        })
-    return data
+    if not query:
+        return {"x_axis": [], "y_axis": [], "data": []}
+
+    # 2. Masukkan ke Pandas DataFrame
+    df = pd.DataFrame(query, columns=["location", "category", "volume_kg"])
+
+    # 3. Lakukan PIVOT (Magic-nya di sini!)
+    # index=Baris (Lokasi), columns=Kolom (Kategori), values=Isi (Volume)
+    # fill_value=0 artinya: yang kosong diisi 0
+    pivot_df = df.pivot_table(index="location", columns="category", values="volume_kg", aggfunc="sum", fill_value=0)
+
+    # 4. Format Output agar enak dimakan Frontend (ApexCharts / Chart.js friendly)
+    result = {
+        "y_axis": pivot_df.index.tolist(),      # Daftar Lokasi
+        "x_axis": pivot_df.columns.tolist(),    # Daftar Kategori
+        "data": pivot_df.values.tolist()        # Matrix Angka [[10, 0, 5], [2, 20, 0], ...]
+    }
+    
+    return result
 
 def get_dashboard_summary(db: Session) -> Dict:
-    # 1. Total Sampah
+    # 1. Total Sampah (All time)
     total = db.query(func.sum(collection_model.CollectionRecord.volume_kg)).scalar() or 0
     
     # 2. Total Lokasi Aktif
@@ -316,9 +349,33 @@ def get_dashboard_summary(db: Session) -> Dict:
     top_day = get_top_producing_days(db)
     busiest = top_day[0]['day_name'] if top_day else "-"
 
+    # --- 5. LOGIKA BARU: Trend Status (7 Hari vs 7 Hari Sebelumnya) ---
+    today = date.today()
+    week_ago = today - timedelta(days=7)
+    two_weeks_ago = today - timedelta(days=14)
+
+    # Volume Minggu Ini (H-7 sampai Hari Ini)
+    current_vol = db.query(func.sum(collection_model.CollectionRecord.volume_kg))\
+        .filter(func.date(collection_model.CollectionRecord.collection_date) > week_ago)\
+        .scalar() or 0
+
+    # Volume Minggu Lalu (H-14 sampai H-7)
+    prev_vol = db.query(func.sum(collection_model.CollectionRecord.volume_kg))\
+        .filter(func.date(collection_model.CollectionRecord.collection_date) <= week_ago,
+                func.date(collection_model.CollectionRecord.collection_date) > two_weeks_ago)\
+        .scalar() or 0
+
+    if current_vol > prev_vol:
+        trend = "NAIK"
+    elif current_vol < prev_vol:
+        trend = "TURUN"
+    else:
+        trend = "STABIL"
+
     return {
         "total_waste_kg": round(total, 2),
         "total_locations": loc_count,
         "most_polluted_location": top_loc_name,
-        "busiest_day": busiest
+        "busiest_day": busiest,
+        "trend_status": trend # <--- Masukkan ke return
     }
