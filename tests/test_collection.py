@@ -29,7 +29,7 @@ def create_location_and_category(db_session):
     return location, category
 
 
-def test_create_collection_record(client: TestClient, db_session):
+def test_create_collection_record(client: TestClient, db_session, admin_auth_headers):
     location, category = create_location_and_category(db_session)
 
     payload = {
@@ -39,7 +39,8 @@ def test_create_collection_record(client: TestClient, db_session):
         "category_id": category.id
     }
 
-    response = client.post("/collections/", json=payload)
+    # FIX: Tambahkan headers=admin_auth_headers
+    response = client.post("/collections/", json=payload, headers=admin_auth_headers)
     assert response.status_code == 201
 
     data = response.json()
@@ -49,16 +50,18 @@ def test_create_collection_record(client: TestClient, db_session):
     assert "id" in data
 
 
-def test_get_collection_records(client: TestClient, db_session):
+def test_get_collection_records(client: TestClient, db_session, admin_auth_headers):
     location, category = create_location_and_category(db_session)
 
+    # FIX: Tambahkan headers saat setup data via API
     client.post("/collections/", json={
         "volume_kg": 5.0,
         "location_id": location.id,
         "category_id": category.id
-    })
+    }, headers=admin_auth_headers)
 
-    response = client.get("/collections/")
+    # FIX: Tambahkan headers saat GET
+    response = client.get("/collections/", headers=admin_auth_headers)
     assert response.status_code == 200
 
     data = response.json()
@@ -66,16 +69,18 @@ def test_get_collection_records(client: TestClient, db_session):
     assert len(data) >= 1
 
 
-def test_get_specific_collection_record(client: TestClient, db_session):
+def test_get_specific_collection_record(client: TestClient, db_session, admin_auth_headers):
     location, category = create_location_and_category(db_session)
 
+    # FIX: Tambahkan headers saat POST
     created = client.post("/collections/", json={
         "volume_kg": 9.0,
         "location_id": location.id,
         "category_id": category.id
-    }).json()
+    }, headers=admin_auth_headers).json()
 
-    response = client.get(f"/collections/{created['id']}")
+    # FIX: Tambahkan headers saat GET
+    response = client.get(f"/collections/{created['id']}", headers=admin_auth_headers)
     assert response.status_code == 200
 
     data = response.json()
@@ -86,6 +91,7 @@ def test_get_specific_collection_record(client: TestClient, db_session):
 def test_update_collection_record(client: TestClient, db_session, admin_auth_headers):
     location, category = create_location_and_category(db_session)
     
+    # Setup manual via DB session tidak butuh headers
     record = CollectionRecord(
         volume_kg=10.0,
         location_id=location.id,
@@ -112,22 +118,26 @@ def test_update_collection_record(client: TestClient, db_session, admin_auth_hea
     assert data["id"] == record.id
 
 
-def test_delete_collection_record(client: TestClient, db_session):
+def test_delete_collection_record(client: TestClient, db_session, admin_auth_headers):
     location, category = create_location_and_category(db_session)
     
+    # FIX: Tambahkan headers saat POST
     created = client.post("/collections/", json={
         "volume_kg": 5.5,
         "location_id": location.id,
         "category_id": category.id
-    }).json()
+    }, headers=admin_auth_headers).json()
 
-    response = client.delete(f"/collections/{created['id']}")
+    # FIX: Tambahkan headers saat DELETE
+    response = client.delete(f"/collections/{created['id']}", headers=admin_auth_headers)
     assert response.status_code == 204 
 
-    check_response = client.get(f"/collections/{created['id']}")
+    # FIX: Tambahkan headers saat verifikasi GET (not found)
+    check_response = client.get(f"/collections/{created['id']}", headers=admin_auth_headers)
     assert check_response.status_code == 404
 
-def test_collection_not_found(client: TestClient):
-    response = client.get("/collections/99999999")
+def test_collection_not_found(client: TestClient, admin_auth_headers):
+    # FIX: Tambahkan headers
+    response = client.get("/collections/99999999", headers=admin_auth_headers)
     assert response.status_code == 404
     assert response.json()["detail"] == "Catatan tidak ditemukan"

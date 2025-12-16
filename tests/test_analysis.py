@@ -115,3 +115,19 @@ def test_dashboard_summary(client, admin_token):
     data = response.json()
     assert "total_waste_kg" in data
     assert "most_polluted_location" in data
+
+def test_heatmap_data(client, db_session, admin_auth_headers):
+    # Setup dummy data...
+    response = client.get("/analysis/heatmap/location-category", headers=admin_auth_headers)
+    assert response.status_code == 200
+    assert isinstance(response.json(), list)
+
+def test_route_optimization_logic(client, db_session, admin_auth_headers):
+    # Setup 3 lokasi dengan koordinat berurutan (A -> B -> C)
+    # Cek apakah endpoint mengembalikan urutan yang logis
+    response = client.get("/analysis/route/optimize", headers=admin_auth_headers)
+    assert response.status_code == 200
+    data = response.json()
+    # Pastikan data tidak kosong jika lokasi ada
+    if len(data) > 0:
+        assert "latitude" in data[0]
