@@ -1,25 +1,28 @@
 from fastapi import APIRouter, UploadFile, File, Depends, HTTPException, status
 from sqlalchemy.orm import Session
 from database import get_db
-from models import collection_model, location_model, category_model
+from models import collection_model, location_model, category_model, user_model
+from services import auth_service 
 import pandas as pd
 import io
 from datetime import datetime
 
 router = APIRouter(
     prefix="/import",
-    tags=["Import Data"]
+    tags=["Import Data"],
+    # Minimal login
+    dependencies=[Depends(auth_service.get_current_user)]
 )
 
 @router.post("/csv-collection")
 async def import_collection_data(
     file: UploadFile = File(...),
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
+    # UBAH DISINI: Tambahkan penjaga khusus Admin
+    current_admin: user_model.User = Depends(auth_service.get_current_admin_user)
 ):
     """
-    Import data transaksi sampah dari CSV.
-    Melakukan lookup ID untuk Lokasi dan Kategori secara otomatis.
-    Mencegah penghapusan tabel (Schema) yang terjadi jika menggunakan to_sql replace.
+    Import data transaksi sampah dari CSV. (HANYA ADMIN)
     """
     # 1. Validasi Ekstensi File
     if not file.filename.endswith('.csv'):
@@ -30,22 +33,16 @@ async def import_collection_data(
         content = await file.read()
         df = pd.read_csv(io.BytesIO(content))
 
-        # 3. Cek Kolom Wajib (Sesuaikan nama kolom dengan header di CSV kamu)
+        # 3. Cek Kolom Wajib
         required_cols = ['Tanggal', 'Lokasi', 'Jenis_Sampah', 'Volume_Sampah_kg']
         if not all(col in df.columns for col in required_cols):
             raise HTTPException(status_code=400, detail=f"CSV harus memiliki kolom: {required_cols}")
 
         # 4. Persiapkan Mapping (Kamus) dari Database
-        # Tujuannya mengubah string "Lokasi_13" menjadi ID (misal: 1)
-        
-        # Ambil semua lokasi
         locations = db.query(location_model.Location).all()
-        # Buat dictionary: {'Lokasi_13': 1, 'Lokasi_2': 5, ...}
         loc_map = {loc.name: loc.id for loc in locations}
 
-        # Ambil semua kategori
         categories = db.query(category_model.WasteCategory).all()
-        # Buat dictionary: {'Organik': 1, 'B3': 2, ...}
         cat_map = {cat.name: cat.id for cat in categories}
 
         new_records = []
@@ -63,14 +60,11 @@ async def import_collection_data(
             cat_id = cat_map.get(cat_name)
 
             if not loc_id or not cat_id:
-                # Catat error tapi jangan stop proses (biar data valid tetap masuk)
-                # Berguna jika ada Typo di CSV
                 errors.append(f"Baris {index+2}: Lokasi '{loc_name}' atau Kategori '{cat_name}' tidak ditemukan di Database.")
                 continue
 
-            # B. Konversi Tanggal (DD/MM/YYYY -> Python Date Object)
+            # B. Konversi Tanggal
             try:
-                # CSV kamu pakai DD/MM/YYYY (contoh: 10/05/2022)
                 coll_date = datetime.strptime(date_str, "%d/%m/%Y")
             except ValueError:
                 errors.append(f"Baris {index+2}: Format tanggal '{date_str}' salah. Gunakan format DD/MM/YYYY.")
@@ -85,7 +79,7 @@ async def import_collection_data(
             )
             new_records.append(record)
 
-        # 6. Simpan ke Database (Bulk Insert)
+        # 6. Simpan ke Database
         if new_records:
             db.bulk_save_objects(new_records)
             db.commit()
@@ -96,7 +90,7 @@ async def import_collection_data(
             "total_baris_csv": len(df),
             "berhasil_disimpan": len(new_records),
             "gagal": len(errors),
-            "contoh_error": errors[:5] # Tampilkan max 5 error pertama agar response tidak kepanjangan
+            "contoh_error": errors[:5]
         }
 
     except Exception as e:
