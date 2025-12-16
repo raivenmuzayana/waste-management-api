@@ -135,10 +135,23 @@ def test_dashboard_summary(client, admin_token):
     assert data["trend_status"] in ["NAIK", "TURUN", "STABIL"]
 
 def test_heatmap_data(client, db_session, admin_auth_headers):
-    # Setup dummy data...
+    # Pastikan ada data dulu
+    setup_dummy_data(client, db_session, admin_auth_headers)
+
     response = client.get("/analysis/heatmap/location-category", headers=admin_auth_headers)
     assert response.status_code == 200
-    assert isinstance(response.json(), list)
+    
+    data = response.json()
+    
+    # Assert struktur baru (Dictionary, bukan List)
+    assert isinstance(data, dict)
+    assert "x_axis" in data
+    assert "y_axis" in data
+    assert "data" in data
+    
+    # Pastikan data matrix tidak kosong
+    if len(data["data"]) > 0:
+        assert isinstance(data["data"][0], list)
 
 def test_route_optimization_logic(client, db_session, admin_auth_headers):
     # Setup 3 lokasi dengan koordinat berurutan (A -> B -> C)

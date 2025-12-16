@@ -79,7 +79,7 @@ def get_optimized_waste_collection_route(db: Session = Depends(get_db)):
     
     return analysis_service.get_optimized_route(db)
 
-@router.get("/heatmap/location-category", response_model=List[analysis_model.PivotData])
+@router.get("/heatmap/location-category", response_model=analysis_model.HeatmapResponse)
 def get_heatmap_data(db: Session = Depends(get_db)):
     return analysis_service.get_location_category_pivot(db)
 
