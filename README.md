@@ -18,6 +18,7 @@ Sistem backend berbasis Python (FastAPI) untuk memantau volume dan jenis sampah 
 * **Role-Based Access Control:**
 
   * **Admin:** Akses penuh (CRUD Data User, Lokasi, Kategori).
+  * **Data Analyst:** Akses khusus ke modul Analisis Data dan Laporan.
 
 ### 3. Analisis Data Cerdas (Data Analytics)
 
@@ -29,6 +30,8 @@ API menyediakan endpoint analisis mendalam menggunakan `Pandas` dan `Scikit-Lear
 * **Distribusi Sampah:** Persentase komposisi jenis sampah.
 * **Prediksi Volume (Machine Learning):** Menggunakan **Linear Regression** untuk memprediksi volume sampah 7 hari ke depan.
 * **Optimasi Rute (Route Optimization):** Menggunakan algoritma **TSP (Traveling Salesperson Problem - Nearest Neighbor)** untuk menentukan rute pengumpulan sampah terpendek yang efisien.
+* **Heatmap Sebaran:** Pivot data untuk melihat konsentrasi volume sampah berdasarkan Lokasi vs Kategori.
+
 
 ### 4. Fitur Tambahan
 
@@ -91,6 +94,7 @@ python seed.py
 **Default User:**
 
 * **Admin:** `admin` / `admin`
+**Analyst:**
 
 ### 5. Jalankan Server
 
@@ -118,10 +122,10 @@ FastAPI menyediakan dokumentasi interaktif secara otomatis. Setelah server berja
 | Method | Endpoint                   | Deskripsi                              | Role          |
 | ------ | -------------------------- | -------------------------------------- | ------------- |
 | `POST` | `/auth/token`              | Login untuk mendapatkan Access Token   | All           |
-| `GET`  | `/analysis/summary`        | Ringkasan dashboard (KPI)              | Admin         |
-| `GET`  | `/analysis/trend/daily`    | Tren volume sampah harian              | Admin         |
-| `GET`  | `/analysis/prediction`     | Prediksi volume 7 hari ke depan        | Admin         |
-| `GET`  | `/analysis/route/optimize` | Rekomendasi rute pengumpulan terpendek | Admin         |
+| `GET`  | `/analysis/summary`        | Ringkasan dashboard (KPI)              | Admin/Analyst |
+| `GET`  | `/analysis/trend/daily`    | Tren volume sampah harian              | Admin/Analyst |
+| `GET`  | `/analysis/prediction`     | Prediksi volume 7 hari ke depan        | Admin/Analyst |
+| `GET`  | `/analysis/route/optimize` | Rekomendasi rute pengumpulan terpendek | Admin/Analyst |
 | `GET`  | `/collections/`            | Melihat riwayat pengumpulan sampah     | Admin         |
 
 ---
