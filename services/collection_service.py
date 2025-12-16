@@ -2,13 +2,11 @@ from sqlalchemy.orm import Session
 from models.collection_model import CollectionRecord, CollectionCreate, CollectionUpdate
 
 def create_collection(db: Session, collection: CollectionCreate):
-    # PERBAIKAN: Gunakan model_dump() menggantikan .dict()
-    # exclude_unset=True dihapus untuk location_id/category_id agar pasti terkirim
-    # Kita handle collection_date manual jika None
-    
+    # Konversi ke dictionary
     data = collection.model_dump()
     
-    # Jika collection_date tidak diisi (None), hapus dari dict agar SQLAlchemy pakai default datetime.now()
+    # Jika collection_date tidak diisi (None), hapus key-nya 
+    # agar SQLAlchemy menggunakan default value (datetime.now) dari model database
     if data.get("collection_date") is None:
         del data["collection_date"]
 
@@ -38,6 +36,7 @@ def update_collection(db: Session, collection_id: int, collection_data: Collecti
     if not db_collection:
         return None
 
+    # exclude_unset=True penting agar field yang tidak dikirim user tidak menimpa data lama dengan None
     update_data = collection_data.model_dump(exclude_unset=True)
     
     for key, value in update_data.items():

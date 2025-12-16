@@ -50,9 +50,3 @@ class DashboardSummary(BaseModel):
     total_locations: int
     most_polluted_location: str
     busiest_day: str
-
-class DashboardSummary(BaseModel):
-    total_waste_kg: float
-    total_locations: int
-    most_polluted_location: str
-    busiest_day: str
