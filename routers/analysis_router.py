@@ -16,18 +16,30 @@ router = APIRouter(
 
 @router.get("/avg-volume/by-location", response_model=List[analysis_model.AvgVolumePerLocation])
 def get_avg_volume_by_location(db: Session = Depends(get_db)):
+    """
+    Menghitung rata-rata volume sampah (kg) untuk setiap lokasi pengambilan. Berguna untuk mengidentifikasi lokasi dengan beban sampah di atas rata-rata
+    """
     return analysis_service.get_avg_volume_per_location(db)
 
 @router.get("/avg-volume/by-category", response_model=List[analysis_model.AvgVolumePerCategory])
 def get_avg_volume_by_category(db: Session = Depends(get_db)):
+    """
+    Menghitung rata-rata berat sampah berdasarkan jenisnya (Organik, Plastik, dll) untuk melihat karakteristik sampah dominan
+    """
     return analysis_service.get_avg_volume_per_category(db)
 
 @router.get("/top-locations", response_model=List[analysis_model.TopLocation])
 def get_top_producing_locations(db: Session = Depends(get_db)):
+    """
+    Menampilkan peringkat teratas lokasi yang menyumbang total volume sampah terbesar (Top 5)
+    """
     return analysis_service.get_top_locations(db)
 
 @router.get("/distribution", response_model=List[analysis_model.CategoryDistribution])
 def get_waste_distribution(db: Session = Depends(get_db)):
+    """
+    Menyajikan persentase kontribusi tiap jenis sampah terhadap total keseluruhan
+    """
     return analysis_service.get_category_distribution(db)
 
 @router.get("/trend/daily", response_model=List[analysis_model.DailyTrend])
@@ -37,21 +49,33 @@ def get_daily_collection_trend(
     end_date: Optional[date] = None,
     db: Session = Depends(get_db)
 ):
+    """
+    Menampilkan data deret waktu (time series) volume sampah harian dilengkapi dengan indikator Moving Average (7-hari)
+    """
     #Format tanggal: YYYY-MM-DD 
     return analysis_service.get_daily_trend(db, start_date=start_date, end_date=end_date)
 
 
 @router.get("/top-days", response_model=List[analysis_model.TopProducingDay])
 def get_top_producing_days_analysis(db: Session = Depends(get_db)):
+    """
+    Mengidentifikasi pola mingguan dengan mengakumulasi volume sampah berdasarkan nama hari (Senin - Minggu).
+    """
     return analysis_service.get_top_producing_days(db)
 
 @router.get("/prediction", response_model=Dict[str, Any]) 
 def get_volume_prediction(db: Session = Depends(get_db)):
+    """
+    Memprediksi volume sampah untuk 7 hari ke depan menggunakan algoritma Machine Learning: Linear Regression
+    """
     # Linear Regression.
     return analysis_service.get_prediction(db)
 
 @router.get("/route/optimize", response_model=List[location_model.LocationResponse])
 def get_optimized_waste_collection_route(db: Session = Depends(get_db)):
+    """
+    Menentukan urutan kunjungan lokasi yang paling efisien berdasarkan jarak terdekat (Nearest Neighbor Algorithm).
+    """
     #  Traveling Salesperson Problem Nearest Neighbor
     
     return analysis_service.get_optimized_route(db)
