@@ -97,7 +97,11 @@ python seed.py
 ```bash
 uvicorn main:app --reload
 ```
+atau
 
+```bash
+fastapi dev main.py
+```
 Server akan berjalan di: `http://127.0.0.1:8000`
 
 ---
