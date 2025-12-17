@@ -94,7 +94,7 @@ python seed.py
 **Default User:**
 
 * **Admin:** `admin` / `admin`
-**Analyst:**
+* **Analyst:**
 
 ### 5. Jalankan Server
 
